@@ -2,42 +2,55 @@
 #define _CRT_SECURE_NO_WARNINGS
 #endif
 
-#include <panel.h>
+#include <stdio.h>
 #include <stdlib.h>
+#include <windows.h>
+#include <conio.h>
 
 #ifndef uint
 #define uint unsigned int
 #endif
 
-#if !defined(student_info) || !defined(student_item) || !defined(list_header)
-#include "types.h"
+#ifndef select_from_menu
+#include "./menu.h"
 #endif
 
-#ifndef select_from_menu
-#include "menu.h"
+#ifndef student
+#include "./functions.h"
 #endif
+
+#define menu_items_count 5
 
 int main() {
-    initscr();          // init NCurses screen
-    start_color();      // Будем работать с цветами
-    noecho();           // No print input chars
-    keypad(stdscr, 1);  // Allow to retrieve Functional keys
-    curs_set(0);        // Hide cursor
+    create_layout();
+    show_base_hint();
+    // update_menu();
+    student* tmp = (student*)calloc(1, sizeof(student));
+    tmp = enter_data(tmp);
+    _getch();
+    return 0;
 
-    border('|', '|', '-', '-', '+', '+', '+', '+');
-
-    const char* menu[5] = {
-        "Create list",
-        "Add new student",
-        "List all students",
-        "Edit info by surname",
-        "Exit program"
+    const char* menu[menu_items_count] = {
+        "Начало работы",
+        "О программе",
+        "Выйти"
     };
 
-    select_from_menu(stdscr, menu, 5, 4);
+    list_header* lst = NULL;
+    char selected = 0;
 
-    getch();
-    
-    endwin();
+    while ((selected = select_from_menu(menu, menu_items_count, menu_items_count - 1)) != menu_items_count - 1) {
+        switch (selected)
+        {
+        case 0:
+            lst = new_list();
+            break;
+        
+        default:
+            // wclear(stdscr);
+            getchar();
+        }
+    }
+
     return 0;
 }
