@@ -24,12 +24,17 @@
 #define lp 3
 #define tp 2
 
+#define getch_thread_timeout 10
+
 COORD screen_pos = {0, 0},      // Нулевые координаты
-      screen_end_pos = {0, 0},  // Координаты конца экрана
+      screen_end_pos = {0, 0},  // Координаты конца экрана (определяется при запуске или перерисовке)
       border_pos = {lp, tp},    // Координаты начала рамки
       menu_pos = {4, 3},        // Координаты блока меню
-      main_pos = {44, 3},       // Координаты главного блока (блока с данными)
-      hint_pos = {4, 0};        // Координаты блока подсказок (определяется при запуске или перерисовке)
+      menu_size = {0, 0},       // Размеры блока меню (определяется при запуске или перерисовке)
+      main_pos = {44, 3},       // Координаты главного блока (блока с данными) (определяется при запуске или перерисовке)
+      main_size = {0, 0},       // Размеры главного блока (определяется при запуске или перерисовке)
+      hint_pos = {4, 0},        // Координаты блока подсказок (определяется при запуске или перерисовке)
+      hint_size = {0, 0};       // Размеры блока подсказок (определяется при запуске или перерисовке)
 
 /// @brief Информационное поле для элементов списка
 typedef struct student {
@@ -52,6 +57,8 @@ typedef struct list_header {
     list_item* first;
     uint length;
 } list_header;
+
+void SCP(COORD _pos) {SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), _pos);}
 
 /// @brief Функция для создания списка
 /// @return Указатель на голову нового списка (или NULL в случае ошибки)
@@ -120,6 +127,10 @@ void create_layout() {
     system("cls");
     int old_cp = GetConsoleOutputCP();
     SetConsoleOutputCP(866);
+    CONSOLE_CURSOR_INFO inf;
+    GetConsoleCursorInfo(GetStdHandle(STD_OUTPUT_HANDLE), &inf);
+    inf.bVisible = FALSE;
+    SetConsoleCursorInfo(GetStdHandle(STD_OUTPUT_HANDLE), &inf);
     int* sz = get_size();
     if (!sz && sz[0]) {
         printf("CRITICAL ERROR: Can't get window size\n");
@@ -135,6 +146,14 @@ void create_layout() {
     COORD border_lt = {lp, tp};
     uint window_w = sz[1] - lp*2;
     uint window_h = sz[2] - tp*2;
+    main_size.X = window_w - 42;
+    main_size.Y = window_h - 5;
+    hint_size.Y = 2;
+    hint_size.X = window_w - 2;
+    menu_pos.X = border_lt.X + 1;
+    menu_pos.Y = border_lt.Y + 1;
+    hint_pos.X = menu_pos.X;
+    hint_pos.Y = menu_pos.Y + window_h - 5;
     SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), border_lt);
     printf("\xC9");
     for (uint _i = 0; _i < 39; _i++) printf("\xCD");
@@ -198,12 +217,24 @@ void create_layout() {
     free(sz);
 }
 
-/// @brief Функция для печати подсказки в заданной области (тестовая функция)
-void show_base_hint() {
+/// @brief Функция для печати подсказки в заданной области
+void show_base_hint(char* _hint) {
     SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), hint_pos);
     int old_cp = GetConsoleOutputCP();
     SetConsoleOutputCP(1251);
-    printf("Это просто базовая подсказка. Создано для проверки корректности расположения на экране.");
+    printf("%s", _hint);
+    SetConsoleOutputCP(old_cp);
+    SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), screen_end_pos);
+}
+
+/// @brief Функция для печати подсказки в заданной области (тестовая функция)
+void show_second_hint(char* _hint) {
+    hint_pos.Y++;
+    SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), hint_pos);
+    hint_pos.Y--;
+    int old_cp = GetConsoleOutputCP();
+    SetConsoleOutputCP(1251);
+    printf("%s", _hint);
     SetConsoleOutputCP(old_cp);
     SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), screen_end_pos);
 }
@@ -232,8 +263,9 @@ int intlen(long long int _i) {
 /// @brief Функция для ввода или изменения данных
 /// @param _data Указатель на изменяемое информационное поле или NULL для создания нового 
 /// @return Указатель на информационное поле с полученными от пользователя данными
-student* enter_data(student* _data) {
-    if (!_data) _data = (student*)calloc(1, sizeof(student));
+student* enter_data(student* _d) {
+    student* _data = (student*)calloc(1, sizeof(student));
+    *_data = *_d;
     COORD local_pos = main_pos;
     local_pos.X+=2;
     local_pos.Y++;
@@ -242,136 +274,379 @@ student* enter_data(student* _data) {
          local_w = sz[1] - lp*2 - 46;
     if (local_h < 12) {return _data;}
     int s = 0;
-    SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), local_pos);
+    SCP(local_pos);
+    COORD item_pos[7] = {
+        {local_pos.X + 2, local_pos.Y + ((local_h>17)?2:1)},
+        {local_pos.X + 2, local_pos.Y + ((local_h>17)?4:2)},
+        {local_pos.X + 2, local_pos.Y + ((local_h>17)?6:3)},
+        {local_pos.X + 2, local_pos.Y + ((local_h>17)?8:4)},
+        {local_pos.X + 2, local_pos.Y + ((local_h>17)?10:5)},
+        {local_pos.X + 2, local_pos.Y + ((local_h>17)?12:6)},
+        {local_pos.X, local_pos.Y + ((local_h>17)?14:7)}
+    };
     // int old_cp = GetConsoleOutputCP();
     int old_cp = 1251;
+    SetConsoleCP(old_cp);
     SetConsoleOutputCP(866);
     printf("\xDA");
     for (uint _i = 0; _i < local_w - 2; _i++) printf("\xC4");
     printf("\xBF");
-    if (local_h >= 17) {
-        // Big layout
 
-        while (1) {
-            // Пустая строка
-            local_pos.Y++;
-            SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), local_pos);
-            printf("\xB3");
-            for (uint _i = 0; _i < local_w - 2; _i++) printf("\x20");
-            printf("\xB3");
-            
-            // Группа
-            local_pos.Y++;
-            SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), local_pos);
-            printf("\xB3\x20");
+    if (local_h > 17) {
+        // Пустая строка
+        local_pos.Y++;
+        SCP(local_pos);
+        printf("\xB3");
+        for (uint _i = 0; _i < local_w - 2; _i++) printf("\x20");
+        printf("\xB3");
+    }
+    
+    // Группа
+    local_pos.Y++;
+    SCP(local_pos);
+    printf("\xB3\x20");
+    if (s == 0) printf("\x1b[47;30m");
+    SetConsoleOutputCP(old_cp);
+    printf("%20.20s\x1b[0m\x20%s", "Группа", _data->group);
+    SetConsoleOutputCP(866);
+    for (uint _i = 0; _i < local_w - 25 - strlen(_data->group); _i++) printf("_");
+    printf("\x20\xB3");
+    
+    if (local_h > 17) {
+        // Пустая строка
+        local_pos.Y++;
+        SCP(local_pos);
+        printf("\xB3");
+        for (uint _i = 0; _i < local_w - 2; _i++) printf("\x20");
+        printf("\xB3");
+    }
+    
+    // Фамилия
+    local_pos.Y++;
+    SCP(local_pos);
+    printf("\xB3\x20");
+    if (s == 1) printf("\x1b[47;30m");
+    SetConsoleOutputCP(old_cp);
+    printf("%20.20s\x1b[0m\x20%s", "Фамилия", _data->surname);
+    SetConsoleOutputCP(866);
+    for (uint _i = 0; _i < local_w - 25 - strlen(_data->surname); _i++) printf("_");
+    printf("\x20\xB3");
+    
+    if (local_h > 17) {
+        // Пустая строка
+        local_pos.Y++;
+        SCP(local_pos);
+        printf("\xB3");
+        for (uint _i = 0; _i < local_w - 2; _i++) printf("\x20");
+        printf("\xB3");
+    }
+    
+    // Год рождения
+    local_pos.Y++;
+    SCP(local_pos);
+    printf("\xB3\x20");
+    if (s == 2) printf("\x1b[47;30m");
+    SetConsoleOutputCP(old_cp);
+    printf("%20.20s\x1b[0m\x20%d", "Год рождения", _data->birth_year);
+    SetConsoleOutputCP(866);
+    for (uint _i = 0; _i < local_w - 25 - intlen(_data->birth_year); _i++) printf("_");
+    printf("\x20\xB3");
+    
+    if (local_h > 17) {
+        // Пустая строка
+        local_pos.Y++;
+        SCP(local_pos);
+        printf("\xB3");
+        for (uint _i = 0; _i < local_w - 2; _i++) printf("\x20");
+        printf("\xB3");
+    }
+    
+    // Пол
+    local_pos.Y++;
+    SCP(local_pos);
+    printf("\xB3\x20");
+    if (s == 3) printf("\x1b[47;30m");
+    SetConsoleOutputCP(old_cp);
+    printf("%20.20s\x1b[0m\x20", "Пол");
+    printf((_data->man)?"Мужской":"Женский");
+    SetConsoleOutputCP(866);
+    for (uint _i = 0; _i < local_w - 32; _i++) printf("_");
+    printf("\x20\xB3");
+    
+    if (local_h > 17) {
+        // Пустая строка
+        local_pos.Y++;
+        SCP(local_pos);
+        printf("\xB3");
+        for (uint _i = 0; _i < local_w - 2; _i++) printf("\x20");
+        printf("\xB3");
+    }
+    
+    // Пропущенные часы
+    local_pos.Y++;
+    SCP(local_pos);
+    printf("\xB3\x20");
+    if (s == 4) printf("\x1b[47;30m");
+    SetConsoleOutputCP(old_cp);
+    printf("%20.20s\x1b[0m\x20%d", "Пропущено часов", _data->skipped_hours);
+    SetConsoleOutputCP(866);
+    for (uint _i = 0; _i < local_w - 25 - intlen(_data->skipped_hours); _i++) printf("_");
+    printf("\x20\xB3");
+    
+    if (local_h > 17) {
+        // Пустая строка
+        local_pos.Y++;
+        SCP(local_pos);
+        printf("\xB3");
+        for (uint _i = 0; _i < local_w - 2; _i++) printf("\x20");
+        printf("\xB3");
+    }
+    
+    // Оправданные часы
+    local_pos.Y++;
+    SCP(local_pos);
+    printf("\xB3\x20");
+    if (s == 5) printf("\x1b[47;30m");
+    SetConsoleOutputCP(old_cp);
+    printf("%20.20s\x1b[0m\x20%d", "Оправдано часов", _data->acquired_hours);
+    SetConsoleOutputCP(866);
+    for (uint _i = 0; _i < local_w - 25 - intlen(_data->acquired_hours); _i++) printf("_");
+    printf("\x20\xB3");
+    
+    if (local_h > 17) {
+        // Пустая строка
+        local_pos.Y++;
+        SCP(local_pos);
+        printf("\xB3");
+        for (uint _i = 0; _i < local_w - 2; _i++) printf("\x20");
+        printf("\xB3");
+    }
+
+    // Кнопки Сохранить и Отменить
+    local_pos.Y++;
+    SCP(local_pos);
+    printf("\xB3");
+    uint btn_w = local_w - 18;
+    for (uint _i = 0; _i < btn_w/2; _i++) printf("\x20");
+    SetConsoleOutputCP(old_cp);
+    if (s == 6) printf("\x1b[47;30m");
+    printf("   ОК   \x1b[0m  ");
+    if (s == 7) printf("\x1b[47;30m");
+    printf("Отмена\x1b[0m");
+    SetConsoleOutputCP(866);
+    for (uint _i = 0; _i < btn_w - btn_w/2; _i++) printf("\x20");
+    printf("\xB3");
+    
+    if (local_h > 17) {
+        // Пустая строка
+        local_pos.Y++;
+        SCP(local_pos);
+        printf("\xB3");
+        for (uint _i = 0; _i < local_w - 2; _i++) printf("\x20");
+        printf("\xB3");
+    }
+    
+    // Завершение (нижняя граница)
+    local_pos.Y++;
+    SCP(local_pos);
+    printf("\xC0");
+    for (uint _i = 0; _i < local_w - 2; _i++) printf("\xC4");
+    printf("\xD9");
+
+    while (1) {
+        if (s == 0) { // 0 1
+            // Редактирование группы
+            uchar a = _getch();
+            if (a == 224) {
+                // Arrow key
+                uchar b = _getch();
+                if (b == 80) s++;  // Down arrow
+            } else if ((a >= 32 && a <= 126) || (a >= 192 && a <= 255)) {
+                // Char key
+                if (strlen(_data->group) < 6) _data->group[strlen(_data->group)] = a;
+            } else if (a == 8) {
+                // Backspace key
+                _data->group[strlen(_data->group)-1] = '\0';
+            }
+            SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), item_pos[0]);
             if (s == 0) printf("\x1b[47;30m");
             SetConsoleOutputCP(old_cp);
             printf("%20.20s\x1b[0m\x20%s", "Группа", _data->group);
             SetConsoleOutputCP(866);
             for (uint _i = 0; _i < local_w - 25 - strlen(_data->group); _i++) printf("_");
-            printf("\x20\xB3");
-            
-            // Пустая строка
-            local_pos.Y++;
-            SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), local_pos);
-            printf("\xB3");
-            for (uint _i = 0; _i < local_w - 2; _i++) printf("\x20");
-            printf("\xB3");
-            
-            // Фамилия
-            local_pos.Y++;
-            SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), local_pos);
-            printf("\xB3\x20");
+            SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), item_pos[1]);
             if (s == 1) printf("\x1b[47;30m");
             SetConsoleOutputCP(old_cp);
             printf("%20.20s\x1b[0m\x20%s", "Фамилия", _data->surname);
             SetConsoleOutputCP(866);
             for (uint _i = 0; _i < local_w - 25 - strlen(_data->surname); _i++) printf("_");
-            printf("\x20\xB3");
-            
-            // Пустая строка
-            local_pos.Y++;
-            SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), local_pos);
-            printf("\xB3");
-            for (uint _i = 0; _i < local_w - 2; _i++) printf("\x20");
-            printf("\xB3");
-            
-            // Год рождения
-            local_pos.Y++;
-            SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), local_pos);
-            printf("\xB3\x20");
+        } else if (s == 1) { // 0 1
+            // Редактирование фамилии
+            uchar a = _getch();
+            if (a == 224) {
+                // Arrow key
+                uchar b = _getch();
+                if (b == 80) s++;  // Down arrow
+                else if (b == 72) s--;  // Up arrow
+            } else if ((a >= 32 && a <= 126) || (a >= 192 && a <= 255)) {
+                // Char key
+                if (strlen(_data->surname) < 15) _data->surname[strlen(_data->surname)] = a;
+            } else if (a == 8) {
+                // Backspace key
+                _data->surname[strlen(_data->surname)-1] = '\0';
+            }
+            SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), item_pos[0]);
+            if (s == 0) printf("\x1b[47;30m");
+            SetConsoleOutputCP(old_cp);
+            printf("%20.20s\x1b[0m\x20%s", "Группа", _data->group);
+            SetConsoleOutputCP(866);
+            for (uint _i = 0; _i < local_w - 25 - strlen(_data->group); _i++) printf("_");
+            SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), item_pos[1]);
+            if (s == 1) printf("\x1b[47;30m");
+            SetConsoleOutputCP(old_cp);
+            printf("%20.20s\x1b[0m\x20%s", "Фамилия", _data->surname);
+            SetConsoleOutputCP(866);
+            for (uint _i = 0; _i < local_w - 25 - strlen(_data->surname); _i++) printf("_");
+            SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), item_pos[2]);
             if (s == 2) printf("\x1b[47;30m");
             SetConsoleOutputCP(old_cp);
             printf("%20.20s\x1b[0m\x20%d", "Год рождения", _data->birth_year);
             SetConsoleOutputCP(866);
             for (uint _i = 0; _i < local_w - 25 - intlen(_data->birth_year); _i++) printf("_");
-            printf("\x20\xB3");
-            
-            // Пустая строка
-            local_pos.Y++;
-            SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), local_pos);
-            printf("\xB3");
-            for (uint _i = 0; _i < local_w - 2; _i++) printf("\x20");
-            printf("\xB3");
-            
-            // Пол
-            local_pos.Y++;
-            SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), local_pos);
-            printf("\xB3\x20");
+        } else if (s == 2) { // 2 4 5
+            // Редактирование года рождения
+            uchar a = _getch();
+            if (a == 224) {
+                // Arrow key
+                uchar b = _getch();
+                if (b == 80) s++;  // Down arrow
+                else if (b == 72) s--;  // Up arrow
+            } else if (a >= 48 && a <= 57) {
+                // Number key
+                _data->birth_year *= 10;
+                _data->birth_year += a - 48;
+            } else if (a == 8) {
+                // Backspace key
+                _data->birth_year -= (_data->birth_year) % 10;
+                _data->birth_year /= 10;
+            }
+            SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), item_pos[1]);
+            if (s == 1) printf("\x1b[47;30m");
+            SetConsoleOutputCP(old_cp);
+            printf("%20.20s\x1b[0m\x20%s", "Фамилия", _data->surname);
+            SetConsoleOutputCP(866);
+            for (uint _i = 0; _i < local_w - 25 - strlen(_data->surname); _i++) printf("_");
+            SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), item_pos[2]);
+            if (s == 2) printf("\x1b[47;30m");
+            SetConsoleOutputCP(old_cp);
+            printf("%20.20s\x1b[0m\x20%d", "Год рождения", _data->birth_year);
+            SetConsoleOutputCP(866);
+            for (uint _i = 0; _i < local_w - 25 - intlen(_data->birth_year); _i++) printf("_");
+            SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), item_pos[3]);
+            if (s == 3) printf("\x1b[47;30m");
+            SetConsoleOutputCP(old_cp);
+            printf("%20.20s\x1b[0m\x20", "Пол");
+            printf((_data->man)?"Мужской":"Женский");
+            SetConsoleOutputCP(866);
+        } else if (s == 3) { // 3
+            // Редактирование гендера
+            uchar a = _getch();
+            if (a == 224) {
+                // Arrow key
+                uchar b = _getch();
+                if (b == 80) s++;  // Down arrow
+                else if (b == 72) s--;  // Up arrow
+                else if (b == 75 || b == 77) _data->man = !(_data->man);
+            } else if (a >= 48 && a <= 57) {
+                // Number key
+                _data->birth_year *= 10;
+                _data->birth_year += a - 48;
+            } else if (a == 13) _data->man = !(_data->man);
+            SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), item_pos[2]);
+            if (s == 2) printf("\x1b[47;30m");
+            SetConsoleOutputCP(old_cp);
+            printf("%20.20s\x1b[0m\x20%d", "Год рождения", _data->birth_year);
+            SetConsoleOutputCP(866);
+            for (uint _i = 0; _i < local_w - 25 - intlen(_data->birth_year); _i++) printf("_");
+            SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), item_pos[3]);
             if (s == 3) printf("\x1b[47;30m");
             SetConsoleOutputCP(old_cp);
             printf("%20.20s\x1b[0m\x20", "Пол");
             printf((_data->man)?"Мужской":"Женский");
             SetConsoleOutputCP(866);
             for (uint _i = 0; _i < local_w - 32; _i++) printf("_");
-            printf("\x20\xB3");
-            
-            // Пустая строка
-            local_pos.Y++;
-            SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), local_pos);
-            printf("\xB3");
-            for (uint _i = 0; _i < local_w - 2; _i++) printf("\x20");
-            printf("\xB3");
-            
-            // Пропущенные часы
-            local_pos.Y++;
-            SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), local_pos);
-            printf("\xB3\x20");
+            SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), item_pos[4]);
             if (s == 4) printf("\x1b[47;30m");
             SetConsoleOutputCP(old_cp);
             printf("%20.20s\x1b[0m\x20%d", "Пропущено часов", _data->skipped_hours);
             SetConsoleOutputCP(866);
             for (uint _i = 0; _i < local_w - 25 - intlen(_data->skipped_hours); _i++) printf("_");
-            printf("\x20\xB3");
-            
-            // Пустая строка
-            local_pos.Y++;
-            SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), local_pos);
-            printf("\xB3");
-            for (uint _i = 0; _i < local_w - 2; _i++) printf("\x20");
-            printf("\xB3");
-            
-            // Оправданные часы
-            local_pos.Y++;
-            SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), local_pos);
-            printf("\xB3\x20");
+        } else if (s == 4) { // 2 4 5
+            // Редактирование количества пропущенных часов
+            uchar a = _getch();
+            if (a == 224) {
+                // Arrow key
+                uchar b = _getch();
+                if (b == 80) s++;  // Down arrow
+                else if (b == 72) s--;  // Up arrow
+            } else if (a >= 48 && a <= 57) {
+                // Number key
+                _data->skipped_hours *= 10;
+                _data->skipped_hours += a - 48;
+            } else if (a == 8) {
+                // Backspace key
+                _data->skipped_hours -= (_data->skipped_hours) % 10;
+                _data->skipped_hours /= 10;
+            }
+            SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), item_pos[3]);
+            if (s == 3) printf("\x1b[47;30m");
+            SetConsoleOutputCP(old_cp);
+            printf("%20.20s\x1b[0m\x20", "Пол");
+            printf((_data->man)?"Мужской":"Женский");
+            SetConsoleOutputCP(866);
+            for (uint _i = 0; _i < local_w - 32; _i++) printf("_");
+            SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), item_pos[4]);
+            if (s == 4) printf("\x1b[47;30m");
+            SetConsoleOutputCP(old_cp);
+            printf("%20.20s\x1b[0m\x20%d", "Пропущено часов", _data->skipped_hours);
+            SetConsoleOutputCP(866);
+            for (uint _i = 0; _i < local_w - 25 - intlen(_data->skipped_hours); _i++) printf("_");
+            SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), item_pos[5]);
             if (s == 5) printf("\x1b[47;30m");
             SetConsoleOutputCP(old_cp);
             printf("%20.20s\x1b[0m\x20%d", "Оправдано часов", _data->acquired_hours);
             SetConsoleOutputCP(866);
             for (uint _i = 0; _i < local_w - 25 - intlen(_data->acquired_hours); _i++) printf("_");
-            printf("\x20\xB3");
-            
-            // Пустая строка
-            local_pos.Y++;
-            SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), local_pos);
-            printf("\xB3");
-            for (uint _i = 0; _i < local_w - 2; _i++) printf("\x20");
-            printf("\xB3");
-
-            // Кнопки Сохранить и Отменить
-            local_pos.Y++;
-            SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), local_pos);
+        } else if (s == 5) { // 2 4 5
+            // Редактирование количества пропущенных часов
+            uchar a = _getch();
+            if (a == 224) {
+                // Arrow key
+                uchar b = _getch();
+                if (b == 80) s++;  // Down arrow
+                else if (b == 72) s--;  // Up arrow
+            } else if (a >= 48 && a <= 57) {
+                // Number key
+                _data->acquired_hours *= 10;
+                _data->acquired_hours += a - 48;
+            } else if (a == 8) {
+                // Backspace key
+                _data->acquired_hours -= (_data->acquired_hours) % 10;
+                _data->acquired_hours /= 10;
+            }
+            SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), item_pos[4]);
+            if (s == 4) printf("\x1b[47;30m");
+            SetConsoleOutputCP(old_cp);
+            printf("%20.20s\x1b[0m\x20%d", "Пропущено часов", _data->skipped_hours);
+            SetConsoleOutputCP(866);
+            for (uint _i = 0; _i < local_w - 25 - intlen(_data->skipped_hours); _i++) printf("_");
+            SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), item_pos[5]);
+            if (s == 5) printf("\x1b[47;30m");
+            SetConsoleOutputCP(old_cp);
+            printf("%20.20s\x1b[0m\x20%d", "Оправдано часов", _data->acquired_hours);
+            SetConsoleOutputCP(866);
+            for (uint _i = 0; _i < local_w - 25 - intlen(_data->acquired_hours); _i++) printf("_");
+            SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), item_pos[6]);
             printf("\xB3");
             uint btn_w = local_w - 18;
             for (uint _i = 0; _i < btn_w/2; _i++) printf("\x20");
@@ -383,90 +658,68 @@ student* enter_data(student* _data) {
             SetConsoleOutputCP(866);
             for (uint _i = 0; _i < btn_w - btn_w/2; _i++) printf("\x20");
             printf("\xB3");
-            
-            // Пустая строка
-            local_pos.Y++;
-            SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), local_pos);
-            printf("\xB3");
-            for (uint _i = 0; _i < local_w - 2; _i++) printf("\x20");
-            printf("\xB3");
-            
-            // Завершение (нижняя граница)
-            local_pos.Y++;
-            SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), local_pos);
-            printf("\xC0");
-            for (uint _i = 0; _i < local_w - 2; _i++) printf("\xC4");
-            printf("\xD9");
-
-            if (s == 2) { // 2 4 5
-                // Редактирование года рождения
-                uchar a = _getch();
-                COORD local2_pos = menu_pos;
-                SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), local2_pos);
-                printf("a = %d", a);
-                if (a == 224) {
-                    // Arrow key
-                    uchar b = _getch();
-                    if (b == 80) s++;  // Down arrow
-                    else if (b == 72) s--; // Up arrow
-                } else if (a >= 48 && a <= 57) {
-                    // Number key
-                    _data->birth_year *= 10;
-                    _data->birth_year += a - 48;
-                } else if (a == 8) {
-                    // Backspace key
-                    _data->birth_year -= (_data->birth_year) % 10;
-                    _data->birth_year /= 10;
-                }
-            } else if (s == 4) { // 2 4 5
-                // Редактирование количества пропущенных часов
-                uchar a = _getch();
-                COORD local2_pos = menu_pos;
-                SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), local2_pos);
-                printf("a = %d", a);
-                if (a == 224) {
-                    // Arrow key
-                    uchar b = _getch();
-                    if (b == 80) s++;  // Down arrow
-                    else if (b == 72) s--; // Up arrow
-                } else if (a >= 48 && a <= 57) {
-                    // Number key
-                    _data->skipped_hours *= 10;
-                    _data->skipped_hours += a - 48;
-                } else if (a == 8) {
-                    // Backspace key
-                    _data->skipped_hours -= (_data->skipped_hours) % 10;
-                    _data->skipped_hours /= 10;
-                }
-            } else if (s == 5) { // 2 4 5
-                // Редактирование количества пропущенных часов
-                uchar a = _getch();
-                COORD local2_pos = menu_pos;
-                SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), local2_pos);
-                printf("a = %d", a);
-                if (a == 224) {
-                    // Arrow key
-                    uchar b = _getch();
-                    if (b == 80) s++;  // Down arrow
-                    else if (b == 72) s--; // Up arrow
-                } else if (a >= 48 && a <= 57) {
-                    // Number key
-                    _data->acquired_hours *= 10;
-                    _data->acquired_hours += a - 48;
-                } else if (a == 8) {
-                    // Backspace key
-                    _data->acquired_hours -= (_data->acquired_hours) % 10;
-                    _data->acquired_hours /= 10;
-                }
-            } else {
-                _getch();
+        } else if (s == 6) { // OK
+            uchar a = _getch();
+            if (a == 224) {
+                // Arrow key
+                uchar b = _getch();
+                if (b == 77) s = 7;  // Right arrow
+                else if (b == 72) s = 5;  // Up arrow
+            } else if (a == 13) {
+                // Enter
+                return _data;
             }
-            local_pos.Y = main_pos.Y + 1;
+            SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), item_pos[5]);
+            if (s == 5) printf("\x1b[47;30m");
+            SetConsoleOutputCP(old_cp);
+            printf("%20.20s\x1b[0m\x20%d", "Оправдано часов", _data->acquired_hours);
+            SetConsoleOutputCP(866);
+            for (uint _i = 0; _i < local_w - 25 - intlen(_data->acquired_hours); _i++) printf("_");
+            SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), item_pos[6]);
+            printf("\xB3");
+            uint btn_w = local_w - 18;
+            for (uint _i = 0; _i < btn_w/2; _i++) printf("\x20");
+            SetConsoleOutputCP(old_cp);
+            if (s == 6) printf("\x1b[47;30m");
+            printf("   ОК   \x1b[0m  ");
+            if (s == 7) printf("\x1b[47;30m");
+            printf("Отмена\x1b[0m");
+            SetConsoleOutputCP(866);
+            for (uint _i = 0; _i < btn_w - btn_w/2; _i++) printf("\x20");
+            printf("\xB3");
+        } else if (s == 7) { // Cancel
+            uchar a = _getch();
+            if (a == 224) {
+                // Arrow key
+                uchar b = _getch();
+                if (b == 75) s = 6;  // Left arrow
+                else if (b == 72) s = 5;  // Up arrow
+            } else if (a == 13) {
+                // Enter
+                return _d;
+            }
+            SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), item_pos[5]);
+            if (s == 5) printf("\x1b[47;30m");
+            SetConsoleOutputCP(old_cp);
+            printf("%20.20s\x1b[0m\x20%d", "Оправдано часов", _data->acquired_hours);
+            SetConsoleOutputCP(866);
+            for (uint _i = 0; _i < local_w - 25 - intlen(_data->acquired_hours); _i++) printf("_");
+            SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), item_pos[6]);
+            printf("\xB3");
+            uint btn_w = local_w - 18;
+            for (uint _i = 0; _i < btn_w/2; _i++) printf("\x20");
+            SetConsoleOutputCP(old_cp);
+            if (s == 6) printf("\x1b[47;30m");
+            printf("   ОК   \x1b[0m  ");
+            if (s == 7) printf("\x1b[47;30m");
+            printf("Отмена\x1b[0m");
+            SetConsoleOutputCP(866);
+            for (uint _i = 0; _i < btn_w - btn_w/2; _i++) printf("\x20");
+            printf("\xB3");
         }
-
-    } else {
-        // Small layout
+        local_pos.Y = main_pos.Y + 1;
     }
+    
     local_pos.Y++;
     SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), local_pos);
     printf("\xC0");
@@ -478,7 +731,11 @@ student* enter_data(student* _data) {
 
 /// @brief Функция для очистки области с меню
 void clear_menu() {
-    //
+    COORD local_pos = menu_pos;
+    for (uint _i = 0; _i < menu_size.Y; _i++, local_pos.Y++) {
+        SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), local_pos);
+        for (uint _j = 0; _j < menu_size.X; _j++) printf("\x20");
+    }
 }
 
 /// @brief Функция для очистки области с подсказками

@@ -31,14 +31,14 @@ typedef struct list_header {
 
 list_header* new_list();
 student new_student(char _group[7], char _surname[16], short _birth_year, char _man, uint _skipped_hours, uint _acquired_hours);
-list_header* add_student(list_header* _lh, student _st);
-student get_student_by_id(list_header* _lh, uint _id);
+list_header* add_student(list_header*, student);
+student get_student_by_id(list_header*, uint);
 int* get_size();
 void create_layout();
-void show_base_hint();
+void show_base_hint(char*);
 void clear_main();
-int intlen(long long int _i);
-student* enter_data(student* _data);
+int intlen(long long int);
+student* enter_data(student*);
 void clear_menu();
 void clear_hint();
 void update_hint();

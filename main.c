@@ -23,7 +23,7 @@
 
 int main() {
     create_layout();
-    show_base_hint();
+    show_base_hint("\x1b[33mПРЕДУПРЕЖДЕНИЕ\x1b[0m: Использование кириллических символов может привести к ошибкам в работе программы.");
     // update_menu();
     student* tmp = (student*)calloc(1, sizeof(student));
     tmp = enter_data(tmp);
