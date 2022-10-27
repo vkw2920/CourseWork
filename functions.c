@@ -29,15 +29,15 @@
 
 #define getch_thread_timeout 10
 
-COORD screen_pos = { 0, 0 },    // Нулевые координаты
-    screen_end_pos = { 0, 0 },  // Координаты конца экрана (определяется при запуске или перерисовке)
-    border_pos = { lp, tp },    // Координаты начала рамки
-    menu_pos = { 4, 3 },        // Координаты блока меню
-    menu_size = { 0, 0 },       // Размеры блока меню (определяется при запуске или перерисовке)
-    main_pos = { 44, 3 },       // Координаты главного блока (блока с данными) (определяется при запуске или перерисовке)
-    main_size = { 0, 0 },       // Размеры главного блока (определяется при запуске или перерисовке)
-    hint_pos = { 4, 0 },        // Координаты блока подсказок (определяется при запуске или перерисовке)
-    hint_size = { 0, 0 };       // Размеры блока подсказок (определяется при запуске или перерисовке)
+COORD screen_pos = { 0, 0 };      // Нулевые координаты
+COORD screen_end_pos = { 0, 0 };  // Координаты конца экрана (определяется при запуске или перерисовке)
+COORD border_pos = { lp, tp };    // Координаты начала рамки
+COORD menu_pos = { 4, 3 };        // Координаты блока меню
+COORD menu_size = { 0, 0 };       // Размеры блока меню (определяется при запуске или перерисовке)
+COORD main_pos = { 44, 3 };       // Координаты главного блока (блока с данными) (определяется при запуске или перерисовке)
+COORD main_size = { 0, 0 };       // Размеры главного блока (определяется при запуске или перерисовке)
+COORD hint_pos = { 4, 0 };        // Координаты блока подсказок (определяется при запуске или перерисовке)
+COORD hint_size = { 0, 0 };       // Размеры блока подсказок (определяется при запуске или перерисовке)
 
 /// @brief Алиас для упрощения перемещения курсора в консоли
 /// @param _pos позиция курсора в структуре COORD
@@ -46,24 +46,6 @@ void SCP(COORD _pos) { SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE),
 /// @brief Алиас для изменения кодировки вывода
 /// @param _cp Номер кодировки
 void chcp(int _cp) { SetConsoleOutputCP(_cp); }
-
-/// @brief Функция для получения размеров консоли
-/// @return Массив из трёх чисел {код_выхода, число_столбцов, число_строк}
-int* get_size() {
-    int* res = (int*)calloc(3, sizeof(int));
-    if (!res) return NULL;
-    HANDLE hWndConsole;
-    if (hWndConsole = GetStdHandle(-12)) {
-        CONSOLE_SCREEN_BUFFER_INFO consoleInfo;
-        if (GetConsoleScreenBufferInfo(hWndConsole, &consoleInfo)) {
-            res[1] = consoleInfo.srWindow.Right - consoleInfo.srWindow.Left + 1;
-            res[2] = consoleInfo.srWindow.Bottom - consoleInfo.srWindow.Top + 1;
-        }
-        else res[0] = GetLastError();
-    }
-    else res[0] = GetLastError();
-    return res;
-}
 
 /// @brief Функция для создания списка
 /// @return Указатель на голову нового списка (или NULL в случае ошибки)
@@ -163,27 +145,27 @@ void create_layout() {
     GetConsoleCursorInfo(GetStdHandle(STD_OUTPUT_HANDLE), &inf);
     inf.bVisible = FALSE;
     SetConsoleCursorInfo(GetStdHandle(STD_OUTPUT_HANDLE), &inf);
-    int* sz = get_size();
-    if (!sz && sz[0]) {
-        printf("CRITICAL ERROR: Can't get window size\n");
+    CONSOLE_SCREEN_BUFFER_INFO buff_info;
+    if (GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &buff_info)) {
+        screen_end_pos = buff_info.dwSize;
+    } else {
         exit(1);
     }
-    if (sz[1] < 80 || sz[2] < 30) {
+    if (screen_end_pos.X < 80 || screen_end_pos.Y < 30) {
         printf("ERROR: You need to open console in fullscreen, because your console size is too small\n");
         getchar();
     }
-    // printf("Width = %d, height = %d\n", sz[1], sz[2]);
-    screen_end_pos.X = sz[1];
-    screen_end_pos.Y = sz[2];
     COORD border_lt = { lp, tp };
-    uint window_w = sz[1] - lp * 2;
-    uint window_h = sz[2] - tp * 2;
+    uint window_w = screen_end_pos.X - lp * 2;
+    uint window_h = screen_end_pos.Y - tp * 2;
     main_size.X = window_w - 42;
     main_size.Y = window_h - 5;
     hint_size.Y = 2;
     hint_size.X = window_w - 2;
     menu_pos.X = border_lt.X + 1;
     menu_pos.Y = border_lt.Y + 1;
+    menu_size.X = 39;
+    menu_size.Y = window_h - 5;
     hint_pos.X = menu_pos.X;
     hint_pos.Y = menu_pos.Y + window_h - 5;
     SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), border_lt);
@@ -231,7 +213,7 @@ void create_layout() {
 
     // Сделать фон
     SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), screen_pos);
-    for (uint _i = 0; _i < sz[1] * 2; _i++) printf("\x1b[3%cm%c", '1' + (rand() % 7), '0' + (rand() % 2));
+    for (uint _i = 0; _i < screen_end_pos.X * 2; _i++) printf("\x1b[3%cm%c", '1' + (rand() % 7), '0' + (rand() % 2));
     screen_pos.Y += tp;
     for (uint _i = 0; _i < window_h; _i++) {
         screen_pos.X = 0;
@@ -243,10 +225,9 @@ void create_layout() {
         screen_pos.Y++;
     }
 
-    for (uint _i = 0; _i < sz[1] * 2; _i++) printf("\x1b[3%cm%c", '1' + (rand() % 7), '0' + (rand() % 2));
+    for (uint _i = 0; _i < screen_end_pos.X * 2; _i++) printf("\x1b[3%cm%c", '1' + (rand() % 7), '0' + (rand() % 2));
     printf("\x1b[0m");
     SetConsoleOutputCP(old_cp);
-    free(sz);
 }
 
 /// @brief Функция для печати подсказки в заданной области
@@ -300,9 +281,8 @@ student* enter_data(student* _d) {
     COORD local_pos = main_pos;
     local_pos.X += 2;
     local_pos.Y++;
-    int* sz = get_size();
-    uint local_h = sz[2] - tp * 2 - 7,
-        local_w = sz[1] - lp * 2 - 46;
+    uint local_h = screen_end_pos.Y - tp * 2 - 7,
+        local_w = screen_end_pos.X - lp * 2 - 46;
     if (local_h < 12) { return _data; }
     int s = 0;
     SCP(local_pos);
@@ -862,19 +842,20 @@ void show_table(list_header* _lh) {
     printf("\xC1\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC1\xC4\xC4\xC4\xC4\xC4\xC1\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC1\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xD9");
     local_pos.Y++;
     SCP(local_pos);
-    for (uint _i = 0; _i < main_size.X / 2 - 6; _i++) printf("\x20");
+    for (uint _i = 0; _i < main_size.X / 2 - (9 + intlen(cur_page+1) + intlen((_lh->length % page_size) ? (_lh->length / page_size + 1) : (_lh->length / page_size))); _i++) printf("\x20");
     printf("Page: %d / %d", cur_page+1, (_lh->length % page_size) ? (_lh->length / page_size + 1) : (_lh->length / page_size));
-    for (uint _i = 0; _i < main_size.X / 2 - 8; _i++) printf("\x20");
+    for (uint _i = 0; _i < main_size.X / 2 - (9 + intlen(cur_page+1) + intlen((_lh->length % page_size) ? (_lh->length / page_size + 1) : (_lh->length / page_size))); _i++) printf("\x20");
     while (local_pos.Y < main_pos.Y + main_size.Y - 1) {
         local_pos.Y++;
         SCP(local_pos);
         for (uint _i = 0; _i < main_size.X - 4; _i++) printf("\x20");
     }
+    show_second_hint("\x1b[47;30m N \x1b[0m Добавить   \x1b[47;30m DEL \x1b[0m Удалить   \x1b[47;30m E / Enter \x1b[0m Изменить   \x1b[47;30m Up/Down \x1b[0m Перемещение курсора   \x1b[47;30m Left/Right \x1b[0m Смена страницы    ");
 
     while (1) {
         uchar a = _getch();
-        SCP(menu_pos);
-        printf("Entered %d     ", a);
+        // SCP(menu_pos);
+        // printf("Entered %d     ", a);
         if (a == 'e' || a == 243 || a == 13) {
             student* editable = get_student_by_id(_lh, s);
             *(editable) = *(enter_data(editable));
@@ -887,13 +868,15 @@ void show_table(list_header* _lh) {
             uchar b = _getch();
             COORD menu = menu_pos;
             menu.Y++;
-            SCP(menu);
-            printf("Entered %d     ", b);
+            // SCP(menu);
+            // printf("Entered %d     ", b);
             if (b == 72 && s > cur_page*page_size) {
                 s--;
-                uint prev = (s>cur_page*page_size)?s-1:s;
-                uint post = (s<(cur_page+1)*page_size)?s+2:s;
-                for (uint _i = prev; _i < post; _i++) {
+                SCP(menu);
+                uint last_on_page = page_size*(cur_page+1) - 1;
+                uint post = (s < last_on_page) ? s+1 : s;
+                printf("S = %d, LOP = %d, POST = %d        ", s, last_on_page, post);
+                for (uint _i = s; _i <= ((s < page_size*(cur_page+1) - 1) ? s+1 : s); _i++) {
                     local_pos.Y = main_pos.Y + 4 + (_i % page_size);
                     student* tmp = get_student_by_id(_lh, _i);
                     if (!tmp) continue;
@@ -916,9 +899,7 @@ void show_table(list_header* _lh) {
                 }
             } else if (b == 80 && s < _lh->length && s < (cur_page+1)*page_size - 2) {
                 s++;
-                uint prev = (s>cur_page*page_size)?s-1:s;
-                uint post = (s<(cur_page+1)*page_size+1)?s+1:s;
-                for (uint _i = prev; _i < post; _i++) {
+                for (uint _i = (s>cur_page*page_size)?s-1:s; _i <= s; _i++) {
                     local_pos.Y = main_pos.Y + 4 + (_i % page_size);
                     student* tmp = get_student_by_id(_lh, _i);
                     if (!tmp) continue;
