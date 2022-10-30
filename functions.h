@@ -10,23 +10,23 @@
 #include <stdlib.h>
 #endif
 
-/// @brief РРЅС„РѕСЂРјР°С†РёРѕРЅРЅРѕРµ РїРѕР»Рµ РґР»СЏ СЌР»РµРјРµРЅС‚РѕРІ СЃРїРёСЃРєР°
+/// @brief Информационное поле для элементов списка
 typedef struct student {
-    char       group[7];  // РЁРёС„СЂ РіСЂСѓРїРїС‹ (6 СЃРёРјРІРѕР»РѕРІ)
-    char    surname[16];  // Р¤Р°РјРёР»РёСЏ СЃС‚СѓРґРµРЅС‚Р° (15 СЃРёРјРІРѕР»РѕРІ)
-    short    birth_year;  // Р“РѕРґ СЂРѕР¶РґРµРЅРёСЏ СЃС‚СѓРґРµРЅС‚Р°
-    char            man;  // РџРѕР» СЃС‚СѓРґРµРЅС‚Р° (1 - Рњ/Рџ, 0 - Р–/Р”)
-    uint  skipped_hours;  // Р§РёСЃР»Рѕ РїСЂРѕРїСѓС‰РµРЅРЅС‹Р№ С‡Р°СЃРѕРІ
-    uint acquired_hours;  // Р§РёСЃР»Рѕ РѕРїСЂР°РІРґР°РЅРЅС‹С… С‡Р°СЃРѕРІ
+    char       group[7];  // Шифр группы (6 символов)
+    char    surname[16];  // Фамилия студента (15 символов)
+    short    birth_year;  // Год рождения студента
+    char            man;  // Пол студента (1 - М/П, 0 - Ж/Д)
+    uint  skipped_hours;  // Число пропущенный часов
+    uint acquired_hours;  // Число оправданных часов
 } student;
 
-/// @brief Р­Р»РµРјРµРЅС‚ СЃРїРёСЃРєР° (РёРЅС„РѕСЂРјР°С†РёРѕРЅРЅРѕРµ РїРѕР»Рµ Рё СѓРєР°Р·Р°С‚РµР»СЊ РЅР° СЃР»РµРґСѓСЋС‰РёР№ СЌР»РµРјРµРЅС‚)
+/// @brief Элемент списка (информационное поле и указатель на следующий элемент)
 typedef struct list_item {
     student* inf;
     struct list_item* next;
 } list_item;
 
-/// @brief Р“РѕР»РѕРІР° СЃРїРёСЃРєР° (СЂР°Р·РјРµСЂ СЃРїРёСЃРєР° Рё СѓРєР°Р·Р°С‚РµР»СЊ РЅР° РЅР°С‡Р°Р»СЊРЅС‹Р№ СЌР»РµРјРµРЅС‚)
+/// @brief Голова списка (размер списка и указатель на начальный элемент)
 typedef struct list_header {
     list_item* first;
     uint length;
@@ -50,6 +50,8 @@ int make_action();
 void show_table(list_header*);
 void chcp(int);
 void remove_student_by_id(list_header*, uint);
+int menu(char, list_header*);
+void sort_list(list_header*, char, char);
 
 
 

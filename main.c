@@ -18,7 +18,7 @@
 #define menu_items_count 5
 
 void list_apped(list_header* _lh) {
-    for (uint _i = 0; _i < 3000; _i++) {
+    for (uint _i = 0; _i < 30; _i++) {
         add_student(_lh, new_student("ИС-3", "Контарев", 2004, 1, 5, 4));
         add_student(_lh, new_student("ИС-1", "Калашникова", 2002, 0, 10, 7));
         add_student(_lh, new_student("ИС-3", "Мочалин", 2002, 1, 10, 7));

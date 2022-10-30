@@ -302,6 +302,7 @@ student* enter_data(student* _d) {
     printf("\xDA");
     for (uint _i = 0; _i < local_w - 2; _i++) printf("\xC4");
     printf("\xBF");
+    clear_second_hint();
 
     if (local_h > 17) {
         // Пустая строка
@@ -472,7 +473,7 @@ student* enter_data(student* _d) {
                 // Arrow key
                 show_second_hint("Повторите нажатие \"а\" для ввода этой буквы");
                 uchar b = _getch();
-                show_second_hint("                                          ");
+                clear_second_hint();
                 if (b == 80) s++;  // Down arrow
                 else if (b == 224) if (strlen(_data->group) < 6) _data->group[strlen(_data->group)] = 'а';
             }
@@ -781,7 +782,10 @@ void show_table(list_header* _lh) {
     // Если не вышли, продолжим работу
     int s = 0;
     uint cur_page = 0;
+    menu(0, _lh);
+    show_second_hint("\x1b[47;30m N \x1b[0m Добавить   \x1b[47;30m DEL \x1b[0m Удалить   \x1b[47;30m E / Enter \x1b[0m Изменить   \x1b[47;30m Up/Down \x1b[0m Перемещение курсора   \x1b[47;30m Left/Right \x1b[0m Смена страницы    \x1b[45;30m ^S \x1b[0m Сохранить в файл    \x1b[47;30m Tab \x1b[0m Перейти в меню    ");
     draw_table:  // Специально для GOTO
+    chcp(866);
     COORD local_pos = main_pos;
     local_pos.Y++, local_pos.X += 2;
 #pragma region Шапка таблицы
@@ -842,20 +846,21 @@ void show_table(list_header* _lh) {
     printf("\xC1\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC1\xC4\xC4\xC4\xC4\xC4\xC1\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC1\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xD9");
     local_pos.Y++;
     SCP(local_pos);
-    for (uint _i = 0; _i < main_size.X / 2 - (9 + intlen(cur_page+1) + intlen((_lh->length % page_size) ? (_lh->length / page_size + 1) : (_lh->length / page_size))); _i++) printf("\x20");
+    for (uint _i = 0; _i < main_size.X / 2 - (5 + intlen(cur_page+1) + intlen((_lh->length % page_size) ? (_lh->length / page_size + 1) : (_lh->length / page_size))); _i++) printf("\x20");
     printf("Page: %d / %d", cur_page+1, (_lh->length % page_size) ? (_lh->length / page_size + 1) : (_lh->length / page_size));
-    for (uint _i = 0; _i < main_size.X / 2 - (9 + intlen(cur_page+1) + intlen((_lh->length % page_size) ? (_lh->length / page_size + 1) : (_lh->length / page_size))); _i++) printf("\x20");
+    for (uint _i = 0; _i < main_size.X / 2 - (5 + intlen(cur_page+1) + intlen((_lh->length % page_size) ? (_lh->length / page_size + 1) : (_lh->length / page_size))); _i++) printf("\x20");
     while (local_pos.Y < main_pos.Y + main_size.Y - 1) {
         local_pos.Y++;
         SCP(local_pos);
         for (uint _i = 0; _i < main_size.X - 4; _i++) printf("\x20");
     }
-    show_second_hint("\x1b[47;30m N \x1b[0m Добавить   \x1b[47;30m DEL \x1b[0m Удалить   \x1b[47;30m E / Enter \x1b[0m Изменить   \x1b[47;30m Up/Down \x1b[0m Перемещение курсора   \x1b[47;30m Left/Right \x1b[0m Смена страницы    ");
 
     while (1) {
         uchar a = _getch();
-        // SCP(menu_pos);
-        // printf("Entered %d     ", a);
+        COORD _local_pos = menu_pos;
+        _local_pos.Y += menu_size.Y - 1;
+        SCP(_local_pos);
+        printf("Entered %d    ", a);
         if (a == 'e' || a == 243 || a == 13) {
             student* editable = get_student_by_id(_lh, s);
             *(editable) = *(enter_data(editable));
@@ -866,16 +871,13 @@ void show_table(list_header* _lh) {
         } else if (a == 224) {
             // Arrow key
             uchar b = _getch();
-            COORD menu = menu_pos;
-            menu.Y++;
-            // SCP(menu);
-            // printf("Entered %d     ", b);
             if (b == 72 && s > cur_page*page_size) {
                 s--;
-                SCP(menu);
-                uint last_on_page = page_size*(cur_page+1) - 1;
-                uint post = (s < last_on_page) ? s+1 : s;
-                printf("S = %d, LOP = %d, POST = %d        ", s, last_on_page, post);
+                if (s > _lh->length) s = _lh->length;
+                // SCP(menu);
+                // uint last_on_page = page_size*(cur_page+1) - 1;
+                // uint post = (s < last_on_page) ? s+1 : s;
+                // printf("S = %d, LOP = %d, POST = %d        ", s, last_on_page, post);
                 for (uint _i = s; _i <= ((s < page_size*(cur_page+1) - 1) ? s+1 : s); _i++) {
                     local_pos.Y = main_pos.Y + 4 + (_i % page_size);
                     student* tmp = get_student_by_id(_lh, _i);
@@ -937,6 +939,283 @@ void show_table(list_header* _lh) {
             return;
         } else if (a == 18) {
             goto draw_table;
+        } else if (a == 9) {
+            // Tab — switch to menu
+            menu(1, _lh);
+            show_second_hint("\x1b[47;30m N \x1b[0m Добавить   \x1b[47;30m DEL \x1b[0m Удалить   \x1b[47;30m E / Enter \x1b[0m Изменить   \x1b[47;30m Up/Down \x1b[0m Перемещение курсора   \x1b[47;30m Left/Right \x1b[0m Смена страницы    \x1b[45;30m ^S \x1b[0m Сохранить в файл    \x1b[47;30m Tab \x1b[0m Перейти в меню    ");
+            goto draw_table;
+        } else if (a == 19) {
+            // Ctrl + S
+            //
+        }
+    }
+}
+
+/// @brief Функция для вывода меню
+/// @param _interactive Можно ли пользователю взаимодействовать с меню при данном вызове
+/// @return код выхода (для неинтерактивного режима всегда 0)
+int menu(char _interactive, list_header* _lh) {
+    int selected = 0;
+    #define _menu_items 8
+    char _sort_direction = 1;
+    COORD local_pos = menu_pos;
+    COORD item_pos[8] = {
+        {menu_pos.X, menu_pos.Y},                                                         // Направление сортировки
+        {menu_pos.X, menu_pos.Y+1},   // Сортировать по группе
+        {menu_pos.X, menu_pos.Y+2},   // Сортировать по фамилии
+        {menu_pos.X, menu_pos.Y+3},   // Сортировать по году рождения
+        {menu_pos.X, menu_pos.Y+4},   // Сортировать по полу
+        {menu_pos.X, menu_pos.Y+5},  // Сортировать по числу пропущенных часов
+        {menu_pos.X, menu_pos.Y+6},  // Сортировать по числу оправданных часов
+        {menu_pos.X, menu_pos.Y+7},  // Сортировать по числу неоправданных часов
+    };
+    const char* item_str[_menu_items] = {
+        "Сортировка",
+        "  По группе",
+        "  По фамилии",
+        "  По году рождения",
+        "  По полу",
+        "  По пропущенным часам",
+        "  По оправданным часам",
+        "  По неоправданным часам",
+    };
+    chcp(1251);
+    if (!_interactive) {
+        // Print only items, without selecting
+        SCP(item_pos[0]);
+        if (selected == 0) printf("\x1b[47;30m");
+        printf("%s: %s", item_str[0], ((_sort_direction) ? ("по возрастанию") : ("по убыванию")));
+        for (uint _i = 0; _i < (menu_size.X - strlen(item_str[0]) - strlen((_sort_direction) ? ("по возрастанию") : ("по убыванию")) - 2); _i++) printf("\x20");
+        printf("\x1b[0m");
+        for (int _i = 1; _i < 8; _i++) {
+            SCP(item_pos[_i]);
+            if (_i == selected) printf("\x1b[47;30m");
+            printf("%s", item_str[_i]);
+            for (uint _j = 0; _j < (menu_size.X - strlen(item_str[_i])); _j++) printf("\x20");
+            printf("\x1b[0m");
+        }
+        return 0;
+    } else {
+        // Print menu with selected
+        clear_second_hint();
+        show_second_hint("\x1b[47;30m Enter \x1b[0m Выбрать   \x1b[47;30m Up/Down \x1b[0m Перемещение курсора    \x1b[45;30m Tab \x1b[0m Вернуться к таблице    ");
+
+        while (1) {
+            SCP(item_pos[0]);
+            if (selected == 0) printf("\x1b[47;30m");
+            printf("%s: %s", item_str[0], ((_sort_direction) ? ("по возрастанию") : ("по убыванию")));
+            for (uint _i = 0; _i < (menu_size.X - strlen(item_str[0]) - strlen((_sort_direction) ? ("по возрастанию") : ("по убыванию")) - 2); _i++) printf("\x20");
+            printf("\x1b[0m");
+            for (int _i = 1; _i < 8; _i++) {
+                SCP(item_pos[_i]);
+                if (_i == selected) printf("\x1b[47;30m");
+                printf("%s", item_str[_i]);
+                for (uint _j = 0; _j < (menu_size.X - strlen(item_str[_i])); _j++) printf("\x20");
+                printf("\x1b[0m");
+            }
+            uchar a = _getch();
+            if (a == 224) {
+                // Если нажата стрелка
+                uchar b = _getch();
+                if (b == 72) {
+                    // Стрелка вверх
+                    if (selected > 0) selected--;
+                } else if (b == 80) {
+                    // Стрелка вниз
+                    if (selected < _menu_items - 1) selected++;
+                } else if (b == 75 || b == 77) {
+                    // Стрелка влево или вправо
+                    if (selected == 0) _sort_direction = !_sort_direction;
+                }
+            } else if (a == 9) {
+                // Tab
+                SCP(item_pos[selected]);
+                printf("%s", item_str[selected]);
+                for (uint _j = 0; _j < (menu_size.X - strlen(item_str[selected])); _j++) printf("\x20");
+                printf("\x1b[0m");
+                return 0;
+            } else if (a == 13) {
+                // Enter
+                if (selected == 0) _sort_direction = !_sort_direction;
+                else {
+                    sort_list(_lh, selected, _sort_direction);
+                    SCP(item_pos[selected]);
+                    printf("%s", item_str[selected]);
+                    for (uint _j = 0; _j < (menu_size.X - strlen(item_str[selected])); _j++) printf("\x20");
+                    printf("\x1b[0m");
+                    return 0;
+                }
+            }
+        }
+    }
+}
+
+/// @brief Функция для сортировки списка
+/// @param _lh Указатель на голову списка
+/// @param _field Номер поля, по которому сортировать (1 — группа, ... , 7 — число неоправданных часов)
+/// @param _direction Направление сортировки (1 — по возрастанию, 0 — по убыванию)
+void sort_list(list_header* _lh, char _field, char _direction) {
+    if (!_lh || !(_lh->first) || !(_lh->first->next)) return;
+    if (_direction == 1) {
+        switch (_field) {
+            case 1:  // Сортировка по группе
+                for (list_item* _i = _lh->first; _i->next; _i = _i->next) {
+                    list_item* pmin = _i;
+                    for (list_item* _j = _i->next; _j; _j = _j->next) if (strcmp(pmin->inf->group, _j->inf->group) > 0) pmin = _j;
+                    if (pmin != _i) {
+                        student* tmp = _i->inf;
+                        _i->inf = pmin->inf;
+                        pmin->inf = tmp;
+                    }
+                }
+                break;
+            case 2:  // Сортировка по фамилии
+                for (list_item* _i = _lh->first; _i->next; _i = _i->next) {
+                    list_item* pmin = _i;
+                    for (list_item* _j = _i->next; _j; _j = _j->next) if (strcmp(pmin->inf->surname, _j->inf->surname) > 0) pmin = _j;
+                    if (pmin != _i) {
+                        student* tmp = _i->inf;
+                        _i->inf = pmin->inf;
+                        pmin->inf = tmp;
+                    }
+                }
+                break;
+            case 3:  // Сортировка по году рождения
+                for (list_item* _i = _lh->first; _i->next; _i = _i->next) {
+                    list_item* pmin = _i;
+                    for (list_item* _j = _i->next; _j; _j = _j->next) if (pmin->inf->birth_year > _j->inf->birth_year) pmin = _j;
+                    if (pmin != _i) {
+                        student* tmp = _i->inf;
+                        _i->inf = pmin->inf;
+                        pmin->inf = tmp;
+                    }
+                }
+                break;
+            case 4:  // Сортировка по полу
+                for (list_item* _i = _lh->first; _i->next; _i = _i->next) {
+                    list_item* pmin = _i;
+                    for (list_item* _j = _i->next; _j; _j = _j->next) if (pmin->inf->man > _j->inf->man) pmin = _j;
+                    if (pmin != _i) {
+                        student* tmp = _i->inf;
+                        _i->inf = pmin->inf;
+                        pmin->inf = tmp;
+                    }
+                }
+                break;
+            case 5:  // Сортировка по пропущенным часам
+                for (list_item* _i = _lh->first; _i->next; _i = _i->next) {
+                    list_item* pmin = _i;
+                    for (list_item* _j = _i->next; _j; _j = _j->next) if (pmin->inf->skipped_hours > _j->inf->skipped_hours) pmin = _j;
+                    if (pmin != _i) {
+                        student* tmp = _i->inf;
+                        _i->inf = pmin->inf;
+                        pmin->inf = tmp;
+                    }
+                }
+                break;
+            case 6:  // Сортировка по оправданным часам
+                for (list_item* _i = _lh->first; _i->next; _i = _i->next) {
+                    list_item* pmin = _i;
+                    for (list_item* _j = _i->next; _j; _j = _j->next) if (pmin->inf->acquired_hours > _j->inf->acquired_hours) pmin = _j;
+                    if (pmin != _i) {
+                        student* tmp = _i->inf;
+                        _i->inf = pmin->inf;
+                        pmin->inf = tmp;
+                    }
+                }
+                break;
+            case 7:  // Сортировка по неоправданным часам
+                for (list_item* _i = _lh->first; _i->next; _i = _i->next) {
+                    list_item* pmin = _i;
+                    for (list_item* _j = _i->next; _j; _j = _j->next) if ((pmin->inf->skipped_hours - pmin->inf->acquired_hours) > (_j->inf->skipped_hours - _j->inf->acquired_hours)) pmin = _j;
+                    if (pmin != _i) {
+                        student* tmp = _i->inf;
+                        _i->inf = pmin->inf;
+                        pmin->inf = tmp;
+                    }
+                }
+                break;
+        }
+    }
+    else {
+        switch (_field) {
+            case 1:  // Сортировка по группе
+                for (list_item* _i = _lh->first; _i->next; _i = _i->next) {
+                    list_item* pmin = _i;
+                    for (list_item* _j = _i->next; _j; _j = _j->next) if (strcmp(pmin->inf->group, _j->inf->group) < 0) pmin = _j;
+                    if (pmin != _i) {
+                        student* tmp = _i->inf;
+                        _i->inf = pmin->inf;
+                        pmin->inf = tmp;
+                    }
+                }
+                break;
+            case 2:  // Сортировка по фамилии
+                for (list_item* _i = _lh->first; _i->next; _i = _i->next) {
+                    list_item* pmin = _i;
+                    for (list_item* _j = _i->next; _j; _j = _j->next) if (strcmp(pmin->inf->surname, _j->inf->surname) < 0) pmin = _j;
+                    if (pmin != _i) {
+                        student* tmp = _i->inf;
+                        _i->inf = pmin->inf;
+                        pmin->inf = tmp;
+                    }
+                }
+                break;
+            case 3:  // Сортировка по году рождения
+                for (list_item* _i = _lh->first; _i->next; _i = _i->next) {
+                    list_item* pmin = _i;
+                    for (list_item* _j = _i->next; _j; _j = _j->next) if (pmin->inf->birth_year < _j->inf->birth_year) pmin = _j;
+                    if (pmin != _i) {
+                        student* tmp = _i->inf;
+                        _i->inf = pmin->inf;
+                        pmin->inf = tmp;
+                    }
+                }
+                break;
+            case 4:  // Сортировка по полу
+                for (list_item* _i = _lh->first; _i->next; _i = _i->next) {
+                    list_item* pmin = _i;
+                    for (list_item* _j = _i->next; _j; _j = _j->next) if (pmin->inf->man < _j->inf->man) pmin = _j;
+                    if (pmin != _i) {
+                        student* tmp = _i->inf;
+                        _i->inf = pmin->inf;
+                        pmin->inf = tmp;
+                    }
+                }
+                break;
+            case 5:  // Сортировка по пропущенным часам
+                for (list_item* _i = _lh->first; _i->next; _i = _i->next) {
+                    list_item* pmin = _i;
+                    for (list_item* _j = _i->next; _j; _j = _j->next) if (pmin->inf->skipped_hours < _j->inf->skipped_hours) pmin = _j;
+                    if (pmin != _i) {
+                        student* tmp = _i->inf;
+                        _i->inf = pmin->inf;
+                        pmin->inf = tmp;
+                    }
+                }
+                break;
+            case 6:  // Сортировка по оправданным часам
+                for (list_item* _i = _lh->first; _i->next; _i = _i->next) {
+                    list_item* pmin = _i;
+                    for (list_item* _j = _i->next; _j; _j = _j->next) if (pmin->inf->acquired_hours < _j->inf->acquired_hours) pmin = _j;
+                    if (pmin != _i) {
+                        student* tmp = _i->inf;
+                        _i->inf = pmin->inf;
+                        pmin->inf = tmp;
+                    }
+                }
+                break;
+            case 7:  // Сортировка по неоправданным часам
+                for (list_item* _i = _lh->first; _i->next; _i = _i->next) {
+                    list_item* pmin = _i;
+                    for (list_item* _j = _i->next; _j; _j = _j->next) if ((pmin->inf->skipped_hours - pmin->inf->acquired_hours) < (_j->inf->skipped_hours - _j->inf->acquired_hours)) pmin = _j;
+                    if (pmin != _i) {
+                        student* tmp = _i->inf;
+                        _i->inf = pmin->inf;
+                        pmin->inf = tmp;
+                    }
+                }
+                break;
         }
     }
 }
@@ -957,6 +1236,14 @@ void clear_hint() {
         SCP(local_pos);
         for (uint _j = 0; _j < hint_size.X; _j++) printf("\x20");
     }
+}
+
+/// @brief Функция для очистки второй строки области подсказок
+void clear_second_hint() {
+    COORD local_pos = hint_pos;
+    local_pos.Y++;
+    SCP(local_pos);
+    for (uint _j = 0; _j < hint_size.X; _j++) printf("\x20");
 }
 
 /// @brief Функция, выполняющая действие
