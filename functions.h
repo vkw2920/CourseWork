@@ -44,14 +44,13 @@ size_t intlen(int);
 student* enter_data(student*);
 void clear_menu();
 void clear_hint();
-void update_hint();
-void update_menu();
-int make_action();
 void show_table(list_header*);
 void chcp(int);
 void remove_student_by_id(list_header*, uint);
 int menu(char, list_header*);
 void sort_list(list_header*, char, char);
+void SCP(COORD);
+void chcp(int);
 
 
 

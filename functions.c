@@ -41,11 +41,11 @@ COORD hint_size = { 0, 0 };       // Размеры блока подсказок (определяется при з
 
 /// @brief Алиас для упрощения перемещения курсора в консоли
 /// @param _pos позиция курсора в структуре COORD
-void SCP(COORD _pos) { SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), _pos); }
+inline void SCP(COORD _pos) { SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), _pos); }
 
 /// @brief Алиас для изменения кодировки вывода
 /// @param _cp Номер кодировки
-void chcp(int _cp) { SetConsoleOutputCP(_cp); }
+inline void chcp(int _cp) { SetConsoleOutputCP(_cp); }
 
 /// @brief Функция для создания списка
 /// @return Указатель на голову нового списка (или NULL в случае ошибки)
@@ -126,14 +126,18 @@ void remove_student_by_id(list_header* _lh, uint _id) {
     if (!_lh) return;
     list_item* tmp = _lh->first;
     if (!tmp) return;
-    for (uint _i = 0; _i <= _id+1 && tmp->next; _i++, tmp = tmp->next) {
-        if (_i == _id+1) {
-            list_item* tmp2 = tmp->next;
-            tmp->next = tmp->next->next;
-            free(tmp2);
-            _lh->length--;
-        }
+    if (_id == 0) {
+        list_item* tmp2 = _lh->first;
+        _lh->first = tmp2->next;
+        free(tmp2);
     }
+    else {
+        for (uint _i = _id-1; _i > 0; _i--, tmp = tmp->next);
+        list_item* tmp2 = tmp->next;
+        tmp->next = tmp2->next;
+        free(tmp2);
+    }
+    _lh->length--;
 }
 
 /// @brief Функция для создания (или перерисовки) элементов интерфейса
@@ -783,7 +787,7 @@ void show_table(list_header* _lh) {
     int s = 0;
     uint cur_page = 0;
     menu(0, _lh);
-    show_second_hint("\x1b[47;30m N \x1b[0m Добавить   \x1b[47;30m DEL \x1b[0m Удалить   \x1b[47;30m E / Enter \x1b[0m Изменить   \x1b[47;30m Up/Down \x1b[0m Перемещение курсора   \x1b[47;30m Left/Right \x1b[0m Смена страницы    \x1b[45;30m ^S \x1b[0m Сохранить в файл    \x1b[47;30m Tab \x1b[0m Перейти в меню    ");
+    show_second_hint("\x1b[47;30m N \x1b[0m Добавить   \x1b[47;30m DEL \x1b[0m Удалить   \x1b[47;30m E / Enter \x1b[0m Изменить   \x1b[47;30m Up/Down \x1b[0m Перемещение курсора   \x1b[47;30m Left/Right \x1b[0m Смена страницы    \x1b[47;30m ^S \x1b[0m Сохранить в фай    \x1b[47;30m ^O \x1b[0m Открыть из файла    \x1b[47;30m Tab \x1b[0m Перейти в меню    ");
     draw_table:  // Специально для GOTO
     chcp(866);
     COORD local_pos = main_pos;
@@ -923,7 +927,7 @@ void show_table(list_header* _lh) {
                     printf("%9d\x20\xB3\x20%-9d\x20\x1b[0m\xB3", tmp->skipped_hours, tmp->acquired_hours);
                 }
             } else if (b == 83) {
-                remove_student_by_id(_lh, s-2);
+                remove_student_by_id(_lh, s);
                 goto draw_table;
             } else if (b == 75 && cur_page > 0) {
                 cur_page--;
@@ -942,12 +946,223 @@ void show_table(list_header* _lh) {
         } else if (a == 9) {
             // Tab — switch to menu
             menu(1, _lh);
-            show_second_hint("\x1b[47;30m N \x1b[0m Добавить   \x1b[47;30m DEL \x1b[0m Удалить   \x1b[47;30m E / Enter \x1b[0m Изменить   \x1b[47;30m Up/Down \x1b[0m Перемещение курсора   \x1b[47;30m Left/Right \x1b[0m Смена страницы    \x1b[45;30m ^S \x1b[0m Сохранить в файл    \x1b[47;30m Tab \x1b[0m Перейти в меню    ");
+            show_second_hint("\x1b[47;30m N \x1b[0m Добавить   \x1b[47;30m DEL \x1b[0m Удалить   \x1b[47;30m E / Enter \x1b[0m Изменить   \x1b[47;30m Up/Down \x1b[0m Перемещение курсора   \x1b[47;30m Left/Right \x1b[0m Смена страницы    \x1b[47;30m ^S \x1b[0m Сохранить в фай    \x1b[47;30m ^O \x1b[0m Открыть из файла    \x1b[47;30m Tab \x1b[0m Перейти в меню    ");
             goto draw_table;
         } else if (a == 19) {
             // Ctrl + S
-            //
+            save_list_to_file(_lh);
+            goto draw_table;
+        } else if (a == 15) {
+            // Ctrl + O
+            read_list_from_file(_lh);
+            goto draw_table;
         }
+    }
+}
+
+/// @brief Функция для запроса имени файла от пользователя и сохранения списка в этот файл
+/// @param _lh Указатель на голову списка для записи
+void save_list_to_file(list_header* _lh) {
+    if (!_lh || !(_lh->first)) return;
+    char file_name[47] = "\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0";
+    COORD local_pos = main_pos;
+    local_pos.Y += (main_size.Y - 4) / 2;
+    local_pos.X += (main_size.X - 50) / 2;
+    chcp(866);
+    SCP(local_pos);
+    printf("\xDA\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xBF");
+    local_pos.Y++;
+    SCP(local_pos);
+    printf("\xB3        ");
+    chcp(1251);
+    printf("Введите имя файла для сохранения");
+    chcp(866);
+    printf("        \xB3");
+    local_pos.Y++;
+    SCP(local_pos);
+    printf("\xB3 ");
+    chcp(1251);
+    printf("%s", file_name);
+    for (uint _i = 0; _i < 46 - strlen(file_name); _i++) printf("_");
+    chcp(866);
+    printf(" \xB3");
+    local_pos.Y++;
+    SCP(local_pos);
+    printf("\xC0\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xD9");
+    local_pos.Y--;
+    while (1) {
+        uchar a = _getch();
+        if (a == 13) {
+            // Enter
+            // Открыть файл для записи и сохранить в него список
+            FILE* out = fopen(file_name, "ab");
+            if (!out) {  // Если не удалось открыть (создать) файл для записи
+                local_pos.X+=2;
+                SCP(local_pos);
+                chcp(1251);
+                printf("           Не удалось создать файл.           ");
+                _getch();
+            } else {
+                fseek(out, 0, SEEK_END);
+                if (ftell(out) > 0) {
+                    // Если файл уже что-то содержит
+                    local_pos.X+=2;
+                    SCP(local_pos);
+                    chcp(1251);
+                    printf(" Нажмите A для дозаписи или W для перезаписи. ");
+                    uchar b = _getch();
+                    while (b != 'w' && b != 'ц' && b != 'a' && b != 'ф' && b != 27) b = _getch();
+                    if (b == 'w' || b == 'ц') {
+                        freopen(file_name, "wb", out);
+                        fseek(out, 0, SEEK_SET);
+                        // Rewrite...
+                        for (list_item* _i = _lh->first; _i; _i = _i->next) {
+                            if (!fwrite(_i->inf, sizeof(student), 1, out)) {
+                                SCP(local_pos);
+                                chcp(1251);
+                                printf("             Ошибка записи в файл             ");
+                                Sleep(1000);
+                                return;
+                            }
+                        }
+                        SCP(local_pos);
+                        chcp(1251);
+                        printf("            Данные записаны в файл            ");
+                        Sleep(1000);
+                        return;
+                    } else if (b == 'a' || b == 'ф') {
+                        // Write to end
+                        for (list_item* _i = _lh->first; _i; _i = _i->next) {
+                            if (!fwrite(_i->inf, sizeof(student), 1, out)) {
+                                SCP(local_pos);
+                                chcp(1251);
+                                printf("             Ошибка записи в файл             ");
+                                Sleep(1000);
+                                return;
+                            }
+                        }
+                        SCP(local_pos);
+                        chcp(1251);
+                        printf("            Данные записаны в файл            ");
+                        Sleep(1000);
+                        return;
+                    } else if (b == 27) {
+                        // ESC
+                        SCP(local_pos);
+                        chcp(1251);
+                        printf("                   Отменено                   ");
+                        Sleep(1000);
+                        return;
+                    }
+                } else {
+                    // Если файл пуст (или только создан, что по сути то же самое)
+                    for (list_item* _i = _lh->first; _i; _i = _i->next) {
+                        if (!fwrite(_i->inf, sizeof(student), 1, out)) {
+                            SCP(local_pos);
+                            chcp(1251);
+                            printf("             Ошибка записи в файл             ");
+                            Sleep(1000);
+                            return;
+                        }
+                    }
+                    SCP(local_pos);
+                    chcp(1251);
+                    printf("            Данные записаны в файл            ");
+                    Sleep(1000);
+                }
+            }
+            return;
+        } else if (a == 224) {
+            _getch();
+        } else if ((a >= 32 && a <= 126) || (a >= 192 && a <= 255)) {
+            if (strlen(file_name) < 46) file_name[strlen(file_name)] = a;
+        } else if (a == 8) {
+            file_name[strlen(file_name) - 1] = '\0';
+        } else if (a == 27) {
+            // ESC
+            return;
+        }
+        SCP(local_pos);
+        printf("\xB3 ");
+        chcp(1251);
+        printf("%s", file_name);
+        for (uint _i = 0; _i < 46 - strlen(file_name); _i++) printf("_");
+        chcp(866);
+        printf(" \xB3");
+    }
+}
+
+/// @brief Функция для чтения списка из файла
+/// @param _lh Указатель на голову списка, в который будут помещены данные
+void read_list_from_file(list_header* _lh) {
+    if (!_lh) return;
+    char file_name[47] = "\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0";
+    COORD local_pos = main_pos;
+    local_pos.Y += (main_size.Y - 4) / 2;
+    local_pos.X += (main_size.X - 50) / 2;
+    chcp(866);
+    SCP(local_pos);
+    printf("\xDA\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xBF");
+    local_pos.Y++;
+    SCP(local_pos);
+    printf("\xB3        ");
+    chcp(1251);
+    printf("Введите имя файла для сохранения");
+    chcp(866);
+    printf("        \xB3");
+    local_pos.Y++;
+    SCP(local_pos);
+    printf("\xB3 ");
+    chcp(1251);
+    printf("%s", file_name);
+    for (uint _i = 0; _i < 46 - strlen(file_name); _i++) printf("_");
+    chcp(866);
+    printf(" \xB3");
+    local_pos.Y++;
+    SCP(local_pos);
+    printf("\xC0\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xD9");
+    local_pos.Y--;
+    local_pos.X += 2;
+    while (1) {
+        uchar a = _getch();
+        if (a == 13) {
+            // Enter
+            // Открыть файл для записи и сохранить в него список
+            FILE* in = fopen(file_name, "rb");
+            if (!in) {  // Если не удалось открыть файл для чтения
+                SCP(local_pos);
+                chcp(1251);
+                printf("           Не удалось открыть файл.           ");
+                _getch();
+            } else {
+                fseek(in, 0, SEEK_END);
+                if (!ftell(in)) {
+                    SCP(local_pos);
+                    chcp(1251);
+                    printf("                  Файл пуст.                  ");
+                    _getch();
+                    return;
+                }
+                fseek(in, 0, SEEK_SET);
+                while (_lh->first) remove_student_by_id(_lh, 0);
+                student tmp = { 0 };
+                while (fread(&tmp, sizeof(student), 1, in)) add_student(_lh, tmp);
+            }
+            return;
+        } else if (a == 224) {
+            _getch();
+        } else if ((a >= 32 && a <= 126) || (a >= 192 && a <= 255)) {
+            if (strlen(file_name) < 46) file_name[strlen(file_name)] = a;
+        } else if (a == 8) {
+            file_name[strlen(file_name) - 1] = '\0';
+        } else if (a == 27) {
+            // ESC
+            return;
+        }
+        SCP(local_pos);
+        chcp(1251);
+        printf("%s", file_name);
+        for (uint _i = 0; _i < 46 - strlen(file_name); _i++) printf("_");
     }
 }
 
@@ -1245,53 +1460,3 @@ void clear_second_hint() {
     SCP(local_pos);
     for (uint _j = 0; _j < hint_size.X; _j++) printf("\x20");
 }
-
-/// @brief Функция, выполняющая действие
-/// @return 1 для продолжения работы, 0 для завершения программы (-1, если функцияонал не реализован)
-int make_action() {
-    return -1;
-}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
