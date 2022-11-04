@@ -150,11 +150,8 @@ void create_layout() {
     inf.bVisible = FALSE;
     SetConsoleCursorInfo(GetStdHandle(STD_OUTPUT_HANDLE), &inf);
     CONSOLE_SCREEN_BUFFER_INFO buff_info;
-    if (GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &buff_info)) {
-        screen_end_pos = buff_info.dwSize;
-    } else {
-        exit(1);
-    }
+    if (GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &buff_info)) screen_end_pos = buff_info.dwSize;
+    else exit(1);
     if (screen_end_pos.X < 80 || screen_end_pos.Y < 30) {
         printf("ERROR: You need to open console in fullscreen, because your console size is too small\n");
         getchar();
@@ -228,10 +225,12 @@ void create_layout() {
         for (uint _j = 0; _j < lp; _j++) printf("\x1b[3%cm%c", '1' + (rand() % 7), '0' + (rand() % 2));
         screen_pos.Y++;
     }
+    screen_pos.X = screen_pos.Y = 0;
 
     for (uint _i = 0; _i < screen_end_pos.X * 2; _i++) printf("\x1b[3%cm%c", '1' + (rand() % 7), '0' + (rand() % 2));
     printf("\x1b[0m");
     SetConsoleOutputCP(old_cp);
+    show_base_hint("\x1b[33mПРЕДУПРЕЖДЕНИЕ\x1b[0m: Использование кириллических символов может привести к ошибкам в работе программы.");
 }
 
 /// @brief Функция для печати подсказки в заданной области
@@ -773,6 +772,7 @@ student* enter_data(student* _d) {
 /// @brief Функция для вывода таблицы студентов
 /// @param _lh Указатель на голову списка студентов
 void show_table(list_header* _lh) {
+    table_start:
     uint page_size = main_size.Y - 6;
     // В случае нехватки пространства сообщим об этом пользователю и выйдем
     if (main_size.X < 76 || main_size.Y < 9) {
@@ -787,7 +787,7 @@ void show_table(list_header* _lh) {
     int s = 0;
     uint cur_page = 0;
     menu(0, _lh);
-    show_second_hint("\x1b[47;30m N \x1b[0m Добавить   \x1b[47;30m DEL \x1b[0m Удалить   \x1b[47;30m E / Enter \x1b[0m Изменить   \x1b[47;30m Up/Down \x1b[0m Перемещение курсора   \x1b[47;30m Left/Right \x1b[0m Смена страницы    \x1b[47;30m ^S \x1b[0m Сохранить в фай    \x1b[47;30m ^O \x1b[0m Открыть из файла    \x1b[47;30m Tab \x1b[0m Перейти в меню    ");
+    show_second_hint("\x1b[47;30m N \x1b[0m Добавить   \x1b[47;30m DEL \x1b[0m Удалить   \x1b[47;30m E / Enter \x1b[0m Изменить   \x1b[47;30m ^S \x1b[0m Сохранить в фай    \x1b[47;30m ^O \x1b[0m Открыть из файла    \x1b[47;30m Tab \x1b[0m Перейти в меню");
     draw_table:  // Специально для GOTO
     chcp(866);
     COORD local_pos = main_pos;
@@ -850,9 +850,9 @@ void show_table(list_header* _lh) {
     printf("\xC1\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC1\xC4\xC4\xC4\xC4\xC4\xC1\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC1\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xD9");
     local_pos.Y++;
     SCP(local_pos);
-    for (uint _i = 0; _i < main_size.X / 2 - (5 + intlen(cur_page+1) + intlen((_lh->length % page_size) ? (_lh->length / page_size + 1) : (_lh->length / page_size))); _i++) printf("\x20");
-    printf("Page: %d / %d", cur_page+1, (_lh->length % page_size) ? (_lh->length / page_size + 1) : (_lh->length / page_size));
-    for (uint _i = 0; _i < main_size.X / 2 - (5 + intlen(cur_page+1) + intlen((_lh->length % page_size) ? (_lh->length / page_size + 1) : (_lh->length / page_size))); _i++) printf("\x20");
+    for (uint _i = 0; _i < main_size.X / 2 - (8 + intlen(cur_page+1) + intlen((_lh->length % page_size) ? (_lh->length / page_size + 1) : (_lh->length / page_size))); _i++) printf("\x20");
+    printf("<-  Page: %d / %d  ->", cur_page+1, (_lh->length % page_size) ? (_lh->length / page_size + 1) : (_lh->length / page_size));
+    for (uint _i = 0; _i < main_size.X / 2 - (8 + intlen(cur_page+1) + intlen((_lh->length % page_size) ? (_lh->length / page_size + 1) : (_lh->length / page_size))); _i++) printf("\x20");
     while (local_pos.Y < main_pos.Y + main_size.Y - 1) {
         local_pos.Y++;
         SCP(local_pos);
@@ -938,15 +938,16 @@ void show_table(list_header* _lh) {
                 cur_page++;
                 goto draw_table;
             }
-        } else if (a == 27) {
+        } else if (a == 3) {
             del_list(_lh);
             return;
         } else if (a == 18) {
-            goto draw_table;
+            create_layout();
+            goto table_start;
         } else if (a == 9) {
             // Tab — switch to menu
             menu(1, _lh);
-            show_second_hint("\x1b[47;30m N \x1b[0m Добавить   \x1b[47;30m DEL \x1b[0m Удалить   \x1b[47;30m E / Enter \x1b[0m Изменить   \x1b[47;30m Up/Down \x1b[0m Перемещение курсора   \x1b[47;30m Left/Right \x1b[0m Смена страницы    \x1b[47;30m ^S \x1b[0m Сохранить в фай    \x1b[47;30m ^O \x1b[0m Открыть из файла    \x1b[47;30m Tab \x1b[0m Перейти в меню    ");
+            show_second_hint("\x1b[47;30m N \x1b[0m Добавить   \x1b[47;30m DEL \x1b[0m Удалить   \x1b[47;30m E / Enter \x1b[0m Изменить   \x1b[47;30m ^S \x1b[0m Сохранить в фай    \x1b[47;30m ^O \x1b[0m Открыть из файла    \x1b[47;30m Tab \x1b[0m Перейти в меню");
             goto draw_table;
         } else if (a == 19) {
             // Ctrl + S

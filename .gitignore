@@ -5,4 +5,5 @@ main.exe
 bin
 c.exe
 file.dat
-file2.dat
+*.dat
+123
