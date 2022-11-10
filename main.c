@@ -1,9 +1,40 @@
+/*
+    +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+                   Севастопольский государственный университет
+                         Кафедра "Информационный системы"
+
+               Программа для рассчёта пропущенных студентами часов
+                                 Текст программы
+                                                                   РАЗРАБОТАЛ
+                                                      Студент гр. ИС/б-21-3-о
+                                                                Контарев В. В.
+                                      2022
+    +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    Программа работает со списком студентов, который заполняется
+и редактируется на этапе выполнения программы. Каждая запись содержит группу
+студента, его фамилию, год рождения, пол и количества часов
+                                                  (пропущенных и оправданных)
+    Основные функции программы:
+    - Заполнение списка с клавиатуры
+    - Вывод списка на экран
+    - Сортировка списка
+    - Редактирование записей в списке
+    - Сохранение списка в файл и чтение из него
+    - Экспорт списка в текстовый файл
+    - Экспорт и импорт списка в/из CSV-файла
+    - Поиск студента по фамилии
+    Вариант задания 8. Утверждено 01.09.2022
+    Среда программирования Visual Studio Code version 1.72.2 (system setup)
+    Дата последней коррекции: 30.10.2022
+    Версия 1.0
+    +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+*/
+
 #ifndef _CRT_SECURE_NO_WARNINGS
 #define _CRT_SECURE_NO_WARNINGS
 #endif
 
 #include <stdio.h>
-#include <stdlib.h>
 #include <windows.h>
 #include <conio.h>
 
@@ -15,9 +46,11 @@
 #include "functions.h"
 #endif
 
+#define DEBUD_MODE 0
+
 #define menu_items_count 5
 
-const char* groups[10] = {
+char* groups[10] = {
     "ИС-1",
     "ИС-2",
     "ИС-3",
@@ -30,7 +63,7 @@ const char* groups[10] = {
     "ИБ-1",
 };
 
-const char* surnames[30] = {
+char* surnames[30] = {
     "Контарев",
     "Калашникова",
     "Мочалин",
@@ -64,20 +97,22 @@ const char* surnames[30] = {
 };
 
 void list_apped(list_header* _lh) {
-    for (uint _i = 0; _i < 1000; _i++) {
-        uint skips = rand()%999999999;
+    if (DEBUD_MODE) printf("Main.exe: list_append called\n");
+    for (uint _i = 0; _i < 100; _i++) {
+        if (DEBUD_MODE) printf("Main.exe: iteration %d in list_append\n", _i+1);
+        uint skips = rand() % 999;
         add_student(_lh, new_student(groups[rand()%10], surnames[rand()%30], 2000+(rand()%20), rand()%2, skips, rand()%skips));
     }
 }
 
 int main() {
     // _getch();
-    create_layout();
     list_header* lh = new_list();
     if (lh) {
+        create_layout();
         list_apped(lh);
-
         show_table(lh);
     }
+    // intlen_test();
     return 0;
 }

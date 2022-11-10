@@ -1,4 +1,3 @@
-#pragma once
 #ifndef _CRT_SECURE_NO_WARNINGS
 #define _CRT_SECURE_NO_WARNINGS
 #endif
@@ -27,6 +26,9 @@
 #define lp 3
 #define tp 2
 
+// Отступы для окна редактирования
+#define elp 40
+
 #define getch_thread_timeout 10
 
 COORD screen_pos = { 0, 0 };      // Нулевые координаты
@@ -34,10 +36,15 @@ COORD screen_end_pos = { 0, 0 };  // Координаты конца экрана (определяется при з
 COORD border_pos = { lp, tp };    // Координаты начала рамки
 COORD menu_pos = { 4, 3 };        // Координаты блока меню
 COORD menu_size = { 0, 0 };       // Размеры блока меню (определяется при запуске или перерисовке)
-COORD main_pos = { 44, 3 };       // Координаты главного блока (блока с данными) (определяется при запуске или перерисовке)
+COORD main_pos = { 34, 3 };       // Координаты главного блока (блока с данными) (определяется при запуске или перерисовке)
 COORD main_size = { 0, 0 };       // Размеры главного блока (определяется при запуске или перерисовке)
 COORD hint_pos = { 4, 0 };        // Координаты блока подсказок (определяется при запуске или перерисовке)
 COORD hint_size = { 0, 0 };       // Размеры блока подсказок (определяется при запуске или перерисовке)
+
+int menu_selected = 0;
+char _sort_direction = 1;
+
+char table_hints[] = "\x1b[47;30m N \x1b[0m Добавить   \x1b[47;30m DEL \x1b[0m Удалить   \x1b[47;30m E \x1b[0m Изменить   \x1b[47;30m ^S / ^O \x1b[0m Сохранить/Открыть из файла    \x1b[47;30m Tab \x1b[0m Перейти в меню";
 
 /// @brief Алиас для упрощения перемещения курсора в консоли
 /// @param _pos позиция курсора в структуре COORD
@@ -56,7 +63,7 @@ list_header* new_list() {
 
 /// @brief Удаление всего списка без предупреждения!
 /// @param _lh Указатель на голову удаляемого списка
-void del_list(list_header* _lh) {
+inline void del_list(list_header* _lh) {
     while (get_student_by_id(_lh, 0)) remove_student_by_id(_lh, 0);
     free(_lh);
 }
@@ -109,20 +116,23 @@ list_header* add_student(list_header* _lh, student _st) {
 /// @param _lh Указатель на голову списка
 /// @param _id ID требуемого элемента
 /// @return Информационное поле в случае успеха, нулевую структуру в случае ошибки
-student* get_student_by_id(list_header* _lh, uint _id) {
-    if (!_lh) return NULL;
+list_item* get_student_by_id(list_header* _lh, uint _id) {
+    if (_id < 0 || !_lh || !(_lh->first))
+        return NULL;
+
     list_item* tmp = _lh->first;
-    if (!tmp) return NULL;
-    for (uint _i = 0; _i <= _id && tmp; _i++, tmp = tmp->next) {
-        if (_i == _id) return tmp->inf;
-    }
+
+    for (uint _i = 0; _i <= _id && tmp; _i++, tmp = tmp->next)
+        if (_i == _id)
+            return tmp;
+
     return NULL;
 }
 
 /// @brief Удаление элемнета по его порядковому номеру
 /// @param _lh Указатель на голову списка
 /// @param _id ID удаляемого элемента
-void remove_student_by_id(list_header* _lh, uint _id) {
+inline void remove_student_by_id(list_header* _lh, uint _id) {
     if (!_lh) return;
     list_item* tmp = _lh->first;
     if (!tmp) return;
@@ -141,7 +151,7 @@ void remove_student_by_id(list_header* _lh, uint _id) {
 }
 
 /// @brief Функция для создания (или перерисовки) элементов интерфейса
-void create_layout() {
+inline void create_layout() {
     system("cls");
     int old_cp = GetConsoleOutputCP();
     SetConsoleOutputCP(866);
@@ -159,21 +169,21 @@ void create_layout() {
     COORD border_lt = { lp, tp };
     uint window_w = screen_end_pos.X - lp * 2;
     uint window_h = screen_end_pos.Y - tp * 2;
-    main_size.X = window_w - 42;
+    main_size.X = window_w - 32;
     main_size.Y = window_h - 5;
     hint_size.Y = 2;
     hint_size.X = window_w - 2;
     menu_pos.X = border_lt.X + 1;
     menu_pos.Y = border_lt.Y + 1;
-    menu_size.X = 39;
+    menu_size.X = 29;
     menu_size.Y = window_h - 5;
     hint_pos.X = menu_pos.X;
     hint_pos.Y = menu_pos.Y + window_h - 5;
     SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), border_lt);
     printf("\xC9");
-    for (uint _i = 0; _i < 39; _i++) printf("\xCD");
+    for (uint _i = 0; _i < 29; _i++) printf("\xCD");
     printf("\xCB");
-    for (uint _i = 0; _i < window_w - 42; _i++) printf("\xCD");
+    for (uint _i = 0; _i < main_size.X; _i++) printf("\xCD");
     printf("\xBB");
     SetConsoleOutputCP(old_cp);
     COORD border_l = border_lt;
@@ -181,34 +191,34 @@ void create_layout() {
         border_l.Y++;
         SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), border_l);
         printf("\xBA");
-        for (uint _i = 0; _i < 39; _i++) printf("\x20");
+        for (uint _i = 0; _i < 29; _i++) printf("\x20");
         printf("\xBA");
-        for (uint _i = 0; _i < window_w - 42; _i++) printf("\x20");
+        for (uint _i = 0; _i < main_size.X; _i++) printf("\x20");
         printf("\xBA");
     }
     border_l.Y++;
     SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), border_l);
     printf("\xCC");
-    for (uint _i = 0; _i < 39; _i++) printf("\xCD");
+    for (uint _i = 0; _i < 29; _i++) printf("\xCD");
     printf("\xCA");
-    for (uint _i = 0; _i < window_w - 42; _i++) printf("\xCD");
+    for (uint _i = 0; _i < main_size.X; _i++) printf("\xCD");
     printf("\xB9");
     for (uint _i = 0; _i < 2; _i++) {
         border_l.Y++;
         SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), border_l);
         printf("\xBA");
-        for (uint _i = 0; _i < 39; _i++) printf("\x20");
+        for (uint _i = 0; _i < 29; _i++) printf("\x20");
         printf("\x20");
-        for (uint _i = 0; _i < window_w - 42; _i++) printf("\x20");
+        for (uint _i = 0; _i < main_size.X; _i++) printf("\x20");
         printf("\xBA");
     }
     hint_pos.Y = border_l.Y - 1;
     border_l.Y++;
     SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), border_l);
     printf("\xC8");
-    for (uint _i = 0; _i < 39; _i++) printf("\xCD");
+    for (uint _i = 0; _i < 29; _i++) printf("\xCD");
     printf("\xCD");
-    for (uint _i = 0; _i < window_w - 42; _i++) printf("\xCD");
+    for (uint _i = 0; _i < main_size.X; _i++) printf("\xCD");
     printf("\xBC");
     SetConsoleOutputCP(old_cp);
 
@@ -234,7 +244,7 @@ void create_layout() {
 }
 
 /// @brief Функция для печати подсказки в заданной области
-void show_base_hint(char* _hint) {
+inline void show_base_hint(char* _hint) {
     SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), hint_pos);
     int old_cp = GetConsoleOutputCP();
     SetConsoleOutputCP(1251);
@@ -245,7 +255,7 @@ void show_base_hint(char* _hint) {
 
 /// @brief Функция для печати подсказки в заданной области
 /// @param _hint Си-строка, которую нужно вывести (обязательно завершение символом \0)
-void show_second_hint(char* _hint) {
+inline void show_second_hint(char* _hint) {
     hint_pos.Y++;
     SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), hint_pos);
     hint_pos.Y--;
@@ -257,7 +267,7 @@ void show_second_hint(char* _hint) {
 }
 
 /// @brief Функция для очистки главной области (области с данными)
-void clear_main() {
+inline void clear_main() {
     COORD local_pos = main_pos;
     for (uint _i = 0; _i < main_size.Y; _i++, local_pos.Y++) {
         SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), local_pos);
@@ -271,7 +281,18 @@ void clear_main() {
 size_t intlen(int _i) {
     char* r = (char*)calloc(21, sizeof(char));
     _itoa(_i, r, 10);
-    return strlen(r);
+    size_t res = strlen(r);
+    free(r);
+    return res;
+}
+
+/// @brief Функция для тестирования функции intlen(int)
+void intlen_test() {
+    printf("Testing: intlen(2004) = %d\n", intlen(2004));
+    printf("Testing: intlen(204) = %d\n", intlen(204));
+    printf("Testing: intlen(24) = %d\n", intlen(24));
+    printf("Testing: intlen(98) = %d\n", intlen(98));
+    printf("Testing: intlen(20394) = %d\n", intlen(20394));
 }
 
 /// @brief Функция для ввода или изменения данных
@@ -282,10 +303,10 @@ student* enter_data(student* _d) {
     student* _data = (student*)calloc(1, sizeof(student));
     *_data = *_d;
     COORD local_pos = main_pos;
-    local_pos.X += 2;
-    local_pos.Y++;
-    uint local_h = screen_end_pos.Y - tp * 2 - 7,
-        local_w = screen_end_pos.X - lp * 2 - 46;
+    local_pos.X += (main_size.X - 40) / 2;
+    local_pos.Y += (main_size.Y > 21) ? (main_size.Y / 2 - 8) : (main_size.Y / 2 - 4);
+    uint local_h = main_size.Y - 4,
+        local_w = 40;
     if (local_h < 12) { return _data; }
     int s = 0;
     SCP(local_pos);
@@ -322,9 +343,9 @@ student* enter_data(student* _d) {
     printf("\xB3\x20");
     if (s == 0) printf("\x1b[47;30m");
     SetConsoleOutputCP(old_cp);
-    printf("%20.20s\x1b[0m\x20%s", "Группа", _data->group);
+    printf("%15.15s\x1b[0m\x20%s", "Группа", _data->group);
     SetConsoleOutputCP(866);
-    for (uint _i = 0; _i < local_w - 25 - strlen(_data->group); _i++) printf("_");
+    for (uint _i = 0; _i < local_w - 20 - strlen(_data->group); _i++) printf("_");
     printf("\x20\xB3");
 
     if (local_h > 17) {
@@ -342,9 +363,9 @@ student* enter_data(student* _d) {
     printf("\xB3\x20");
     if (s == 1) printf("\x1b[47;30m");
     SetConsoleOutputCP(old_cp);
-    printf("%20.20s\x1b[0m\x20%s", "Фамилия", _data->surname);
+    printf("%15.15s\x1b[0m\x20%s", "Фамилия", _data->surname);
     SetConsoleOutputCP(866);
-    for (uint _i = 0; _i < local_w - 25 - strlen(_data->surname); _i++) printf("_");
+    for (uint _i = 0; _i < local_w - 20 - strlen(_data->surname); _i++) printf("_");
     printf("\x20\xB3");
 
     if (local_h > 17) {
@@ -362,9 +383,10 @@ student* enter_data(student* _d) {
     printf("\xB3\x20");
     if (s == 2) printf("\x1b[47;30m");
     SetConsoleOutputCP(old_cp);
-    printf("%20.20s\x1b[0m\x20%d", "Год рождения", _data->birth_year);
+    if (_data->birth_year) printf("%15.15s\x1b[0m\x20%d", "Год рождения", _data->birth_year);
+    else printf("%15.15s\x1b[0m\x20_", "Год рождения");
     SetConsoleOutputCP(866);
-    for (uint _i = 0; _i < local_w - 25 - intlen(_data->birth_year); _i++) printf("_");
+    for (uint _i = 0; _i < local_w - 20 - intlen(_data->birth_year); _i++) printf("_");
     printf("\x20\xB3");
 
     if (local_h > 17) {
@@ -382,10 +404,10 @@ student* enter_data(student* _d) {
     printf("\xB3\x20");
     if (s == 3) printf("\x1b[47;30m");
     SetConsoleOutputCP(old_cp);
-    printf("%20.20s\x1b[0m\x20", "Пол");
+    printf("%15.15s\x1b[0m\x20", "Пол");
     printf((_data->man) ? "Мужской" : "Женский");
     SetConsoleOutputCP(866);
-    for (uint _i = 0; _i < local_w - 32; _i++) printf("_");
+    for (uint _i = 0; _i < local_w - 27; _i++) printf("_");
     printf("\x20\xB3");
 
     if (local_h > 17) {
@@ -403,9 +425,10 @@ student* enter_data(student* _d) {
     printf("\xB3\x20");
     if (s == 4) printf("\x1b[47;30m");
     SetConsoleOutputCP(old_cp);
-    printf("%20.20s\x1b[0m\x20%d", "Пропущено часов", _data->skipped_hours);
+    if (_data->skipped_hours) printf("%15.15s\x1b[0m\x20%d", "Пропущено часов", _data->skipped_hours);
+    else printf("%15.15s\x1b[0m\x20_", "Пропущено часов");
     SetConsoleOutputCP(866);
-    for (uint _i = 0; _i < local_w - 25 - intlen(_data->skipped_hours); _i++) printf("_");
+    for (uint _i = 0; _i < local_w - 20 - intlen(_data->skipped_hours); _i++) printf("_");
     printf("\x20\xB3");
 
     if (local_h > 17) {
@@ -423,9 +446,10 @@ student* enter_data(student* _d) {
     printf("\xB3\x20");
     if (s == 5) printf("\x1b[47;30m");
     SetConsoleOutputCP(old_cp);
-    printf("%20.20s\x1b[0m\x20%d", "Оправдано часов", _data->acquired_hours);
+    if (_data->acquired_hours) printf("%15.15s\x1b[0m\x20%d", "Оправдано часов", _data->acquired_hours);
+    else printf("%15.15s\x1b[0m\x20_", "Оправдано часов");
     SetConsoleOutputCP(866);
-    for (uint _i = 0; _i < local_w - 25 - intlen(_data->acquired_hours); _i++) printf("_");
+    for (uint _i = 0; _i < local_w - 20 - intlen(_data->acquired_hours); _i++) printf("_");
     printf("\x20\xB3");
 
     if (local_h > 17) {
@@ -488,16 +512,20 @@ student* enter_data(student* _d) {
                 // Backspace key
                 _data->group[strlen(_data->group) - 1] = '\0';
             }
+            else if (a == 27) {
+                clear_main();
+                return _d;
+            }
             SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), item_pos[0]);
             if (s == 0) printf("\x1b[47;30m");
             SetConsoleOutputCP(old_cp);
-            printf("%20.20s\x1b[0m\x20%s", "Группа", _data->group);
+            printf("%15.15s\x1b[0m\x20%s", "Группа", _data->group);
             SetConsoleOutputCP(866);
             for (uint _i = 0; _i < local_w - 25 - strlen(_data->group); _i++) printf("_");
             SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), item_pos[1]);
             if (s == 1) printf("\x1b[47;30m");
             SetConsoleOutputCP(old_cp);
-            printf("%20.20s\x1b[0m\x20%s", "Фамилия", _data->surname);
+            printf("%15.15s\x1b[0m\x20%s", "Фамилия", _data->surname);
             SetConsoleOutputCP(866);
             for (uint _i = 0; _i < local_w - 25 - strlen(_data->surname); _i++) printf("_");
         }
@@ -521,22 +549,26 @@ student* enter_data(student* _d) {
                 // Backspace key
                 _data->surname[strlen(_data->surname) - 1] = '\0';
             }
+            else if (a == 27) {
+                clear_main();
+                return _d;
+            }
             SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), item_pos[0]);
             if (s == 0) printf("\x1b[47;30m");
             SetConsoleOutputCP(old_cp);
-            printf("%20.20s\x1b[0m\x20%s", "Группа", _data->group);
+            printf("%15.15s\x1b[0m\x20%s", "Группа", _data->group);
             SetConsoleOutputCP(866);
             for (uint _i = 0; _i < local_w - 25 - strlen(_data->group); _i++) printf("_");
             SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), item_pos[1]);
             if (s == 1) printf("\x1b[47;30m");
             SetConsoleOutputCP(old_cp);
-            printf("%20.20s\x1b[0m\x20%s", "Фамилия", _data->surname);
+            printf("%15.15s\x1b[0m\x20%s", "Фамилия", _data->surname);
             SetConsoleOutputCP(866);
             for (uint _i = 0; _i < local_w - 25 - strlen(_data->surname); _i++) printf("_");
             SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), item_pos[2]);
             if (s == 2) printf("\x1b[47;30m");
             SetConsoleOutputCP(old_cp);
-            printf("%20.20s\x1b[0m\x20%d", "Год рождения", _data->birth_year);
+            printf("%15.15s\x1b[0m\x20%d", "Год рождения", _data->birth_year);
             SetConsoleOutputCP(866);
             for (uint _i = 0; _i < local_w - 25 - intlen(_data->birth_year); _i++) printf("_");
         }
@@ -559,22 +591,26 @@ student* enter_data(student* _d) {
                 _data->birth_year -= (_data->birth_year) % 10;
                 _data->birth_year /= 10;
             }
+            else if (a == 27) {
+                clear_main();
+                return _d;
+            }
             SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), item_pos[1]);
             if (s == 1) printf("\x1b[47;30m");
             SetConsoleOutputCP(old_cp);
-            printf("%20.20s\x1b[0m\x20%s", "Фамилия", _data->surname);
+            printf("%15.15s\x1b[0m\x20%s", "Фамилия", _data->surname);
             SetConsoleOutputCP(866);
             for (uint _i = 0; _i < local_w - 25 - strlen(_data->surname); _i++) printf("_");
             SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), item_pos[2]);
             if (s == 2) printf("\x1b[47;30m");
             SetConsoleOutputCP(old_cp);
-            printf("%20.20s\x1b[0m\x20%d", "Год рождения", _data->birth_year);
+            printf("%15.15s\x1b[0m\x20%d", "Год рождения", _data->birth_year);
             SetConsoleOutputCP(866);
             for (uint _i = 0; _i < local_w - 25 - intlen(_data->birth_year); _i++) printf("_");
             SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), item_pos[3]);
             if (s == 3) printf("\x1b[47;30m");
             SetConsoleOutputCP(old_cp);
-            printf("%20.20s\x1b[0m\x20", "Пол");
+            printf("%15.15s\x1b[0m\x20", "Пол");
             printf((_data->man) ? "Мужской" : "Женский");
             SetConsoleOutputCP(866);
         }
@@ -589,23 +625,27 @@ student* enter_data(student* _d) {
                 else if (b == 75 || b == 77) _data->man = !(_data->man);
             }
             else if (a == 13) _data->man = !(_data->man);
+            else if (a == 27) {
+                clear_main();
+                return _d;
+            }
             SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), item_pos[2]);
             if (s == 2) printf("\x1b[47;30m");
             SetConsoleOutputCP(old_cp);
-            printf("%20.20s\x1b[0m\x20%d", "Год рождения", _data->birth_year);
+            printf("%15.15s\x1b[0m\x20%d", "Год рождения", _data->birth_year);
             SetConsoleOutputCP(866);
             for (uint _i = 0; _i < local_w - 25 - intlen(_data->birth_year); _i++) printf("_");
             SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), item_pos[3]);
             if (s == 3) printf("\x1b[47;30m");
             SetConsoleOutputCP(old_cp);
-            printf("%20.20s\x1b[0m\x20", "Пол");
+            printf("%15.15s\x1b[0m\x20", "Пол");
             printf((_data->man) ? "Мужской" : "Женский");
             SetConsoleOutputCP(866);
             for (uint _i = 0; _i < local_w - 32; _i++) printf("_");
             SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), item_pos[4]);
             if (s == 4) printf("\x1b[47;30m");
             SetConsoleOutputCP(old_cp);
-            printf("%20.20s\x1b[0m\x20%d", "Пропущено часов", _data->skipped_hours);
+            printf("%15.15s\x1b[0m\x20%d", "Пропущено часов", _data->skipped_hours);
             SetConsoleOutputCP(866);
             for (uint _i = 0; _i < local_w - 25 - intlen(_data->skipped_hours); _i++) printf("_");
         }
@@ -628,23 +668,27 @@ student* enter_data(student* _d) {
                 _data->skipped_hours -= (_data->skipped_hours) % 10;
                 _data->skipped_hours /= 10;
             }
+            else if (a == 27) {
+                clear_main();
+                return _d;
+            }
             SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), item_pos[3]);
             if (s == 3) printf("\x1b[47;30m");
             SetConsoleOutputCP(old_cp);
-            printf("%20.20s\x1b[0m\x20", "Пол");
+            printf("%15.15s\x1b[0m\x20", "Пол");
             printf((_data->man) ? "Мужской" : "Женский");
             SetConsoleOutputCP(866);
             for (uint _i = 0; _i < local_w - 32; _i++) printf("_");
             SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), item_pos[4]);
             if (s == 4) printf("\x1b[47;30m");
             SetConsoleOutputCP(old_cp);
-            printf("%20.20s\x1b[0m\x20%d", "Пропущено часов", _data->skipped_hours);
+            printf("%15.15s\x1b[0m\x20%d", "Пропущено часов", _data->skipped_hours);
             SetConsoleOutputCP(866);
             for (uint _i = 0; _i < local_w - 25 - intlen(_data->skipped_hours); _i++) printf("_");
             SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), item_pos[5]);
             if (s == 5) printf("\x1b[47;30m");
             SetConsoleOutputCP(old_cp);
-            printf("%20.20s\x1b[0m\x20%d", "Оправдано часов", _data->acquired_hours);
+            printf("%15.15s\x1b[0m\x20%d", "Оправдано часов", _data->acquired_hours);
             SetConsoleOutputCP(866);
             for (uint _i = 0; _i < local_w - 25 - intlen(_data->acquired_hours); _i++) printf("_");
         }
@@ -667,16 +711,20 @@ student* enter_data(student* _d) {
                 _data->acquired_hours -= (_data->acquired_hours) % 10;
                 _data->acquired_hours /= 10;
             }
+            else if (a == 27) {
+                clear_main();
+                return _d;
+            }
             SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), item_pos[4]);
             if (s == 4) printf("\x1b[47;30m");
             SetConsoleOutputCP(old_cp);
-            printf("%20.20s\x1b[0m\x20%d", "Пропущено часов", _data->skipped_hours);
+            printf("%15.15s\x1b[0m\x20%d", "Пропущено часов", _data->skipped_hours);
             SetConsoleOutputCP(866);
             for (uint _i = 0; _i < local_w - 25 - intlen(_data->skipped_hours); _i++) printf("_");
             SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), item_pos[5]);
             if (s == 5) printf("\x1b[47;30m");
             SetConsoleOutputCP(old_cp);
-            printf("%20.20s\x1b[0m\x20%d", "Оправдано часов", _data->acquired_hours);
+            printf("%15.15s\x1b[0m\x20%d", "Оправдано часов", _data->acquired_hours);
             SetConsoleOutputCP(866);
             for (uint _i = 0; _i < local_w - 25 - intlen(_data->acquired_hours); _i++) printf("_");
             SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), item_pos[6]);
@@ -705,10 +753,14 @@ student* enter_data(student* _d) {
                 clear_main();
                 return _data;
             }
+            else if (a == 27) {
+                clear_main();
+                return _d;
+            }
             SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), item_pos[5]);
             if (s == 5) printf("\x1b[47;30m");
             SetConsoleOutputCP(old_cp);
-            printf("%20.20s\x1b[0m\x20%d", "Оправдано часов", _data->acquired_hours);
+            printf("%15.15s\x1b[0m\x20%d", "Оправдано часов", _data->acquired_hours);
             SetConsoleOutputCP(866);
             for (uint _i = 0; _i < local_w - 25 - intlen(_data->acquired_hours); _i++) printf("_");
             SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), item_pos[6]);
@@ -737,10 +789,14 @@ student* enter_data(student* _d) {
                 clear_main();
                 return _d;
             }
+            else if (a == 27) {
+                clear_main();
+                return _d;
+            }
             SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), item_pos[5]);
             if (s == 5) printf("\x1b[47;30m");
             SetConsoleOutputCP(old_cp);
-            printf("%20.20s\x1b[0m\x20%d", "Оправдано часов", _data->acquired_hours);
+            printf("%15.15s\x1b[0m\x20%d", "Оправдано часов", _data->acquired_hours);
             SetConsoleOutputCP(866);
             for (uint _i = 0; _i < local_w - 25 - intlen(_data->acquired_hours); _i++) printf("_");
             SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), item_pos[6]);
@@ -771,199 +827,272 @@ student* enter_data(student* _d) {
 
 /// @brief Функция для вывода таблицы студентов
 /// @param _lh Указатель на голову списка студентов
-void show_table(list_header* _lh) {
+/// @param _title Заголовок таблицы
+void show_table_with_title(list_header* _lh, char* _title) {
+    COORD local_pos;
+
+    char format[20] = "\0";
+    const char* headers[6] = {
+        "Группа",
+        "Фамилия",
+        "Год рождения",
+        "Пол",
+        "Пропущено",
+        "Оправдано"
+    };
+
     table_start:
-    uint page_size = main_size.Y - 6;
-    // В случае нехватки пространства сообщим об этом пользователю и выйдем
-    if (main_size.X < 76 || main_size.Y < 9) {
-        SCP(main_pos);
-        for (uint _i = 0; _i < (main_pos.X - 45) / 2; _i++) printf("\x20");
-        printf("Ошибка отображения. Недостаточно пространства");
-        _getch();
-        clear_main();
-        return;
-    }
-    // Если не вышли, продолжим работу
-    int s = 0;
-    uint cur_page = 0;
+
+    // Проясним все размеры
+    uint table_width = main_size.X - 2;  // Отступы слева и справа от таблицы
+    uint table_hight = main_size.Y - 2;  // Место для заголовка и нумерации страниц
+    uint page_size = table_hight - 4;
+    uint current_page = 0;
+    uint page_count = _lh->length / page_size;
+    if (page_count*page_size < _lh->length) page_count++;
+
+    uint group_width = 6;
+    uint birthyear_width = 12;
+    uint gender_width = 3;
+    uint skipped_hours_with = 11;
+    uint acuired_hours_width = 11;
+    uint surname_width = table_width - 19 - group_width - birthyear_width - gender_width - skipped_hours_with - acuired_hours_width;
+
+    uint selected = 0;
+
+    local_pos = main_pos;
+    local_pos.X++;
+    SCP(local_pos);
+    chcp(1251);
+    uint title_left_padding = (table_width - strlen(_title)) / 2;
+    for (uint _i = 0; _i < title_left_padding; _i++) printf(" ");
+    printf("%s", _title);
+    for (uint _i = 0; _i < table_width - strlen(_title) - title_left_padding; _i++) printf(" ");
+
+    draw_table:
+
     menu(0, _lh);
-    show_second_hint("\x1b[47;30m N \x1b[0m Добавить   \x1b[47;30m DEL \x1b[0m Удалить   \x1b[47;30m E / Enter \x1b[0m Изменить   \x1b[47;30m ^S \x1b[0m Сохранить в фай    \x1b[47;30m ^O \x1b[0m Открыть из файла    \x1b[47;30m Tab \x1b[0m Перейти в меню");
-    draw_table:  // Специально для GOTO
-    chcp(866);
-    COORD local_pos = main_pos;
-    local_pos.Y++, local_pos.X += 2;
-#pragma region Шапка таблицы
-    SCP(local_pos);
-    printf("\xDA\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC2");  // Horizontal line
-    // 46 (R) + 10 (L) + 4 (Padding)
-    for (uint _i = 0; _i < main_size.X - 60; _i++) printf("\xC4");
-    printf("\xC2\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC2\xC4\xC4\xC4\xC4\xC4\xC2\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC2\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xBF");  // TopRight
+    show_second_hint(table_hints);
+
+    local_pos = main_pos;
+    local_pos.X++;
     local_pos.Y++;
+
     SCP(local_pos);
-    printf("\xB3 ");
-    chcp(1251); printf("Группа ");
-    chcp(866); printf("\xB3 ");
-    for (uint _i = 0; _i < (main_size.X - 69) / 2; _i++) printf("\x20");
-    chcp(1251); printf("Фамилия");
-    chcp(866);
-    for (uint _i = 0; _i < (main_size.X - 69) - (main_size.X - 69) / 2; _i++) printf("\x20");
-    printf(" \xB3 ");
-    chcp(1251); printf("Год рождения ");
-    chcp(866); printf("\xB3 ");
-    chcp(1251); printf("Пол ");
-    chcp(866); printf("\xB3 ");
-    chcp(1251); printf("Пропущено ");
-    chcp(866); printf("\xB3 ");
-    chcp(1251); printf("Оправдано ");
-    chcp(866); printf("\xB3");
-    local_pos.Y++;
-    SCP(local_pos);
-    printf("\xC3\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC5");
-    for (uint _i = 0; _i < main_size.X - 60; _i++) printf("\xC4");
-    printf("\xC5\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC5\xC4\xC4\xC4\xC4\xC4\xC5\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC5\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xB4");
-#pragma endregion
+    chcp(866); printf("\xda\xc4");
+    for (uint _i = 0; _i < group_width; _i++) printf("\xc4");
+    printf("\xc4\xc2\xc4");
+    for (uint _i = 0; _i < surname_width; _i++) printf("\xc4");
+    printf("\xc4\xc2\xc4");
+    for (uint _i = 0; _i < birthyear_width; _i++) printf("\xc4");
+    printf("\xc4\xc2\xc4");
+    for (uint _i = 0; _i < gender_width; _i++) printf("\xc4");
+    printf("\xc4\xc2\xc4");
+    for (uint _i = 0; _i < skipped_hours_with; _i++) printf("\xc4");
+    printf("\xc4\xc2\xc4");
+    for (uint _i = 0; _i < acuired_hours_width; _i++) printf("\xc4");
+    printf("\xc4\xbf");
 
     local_pos.Y++;
-    for (int _i = cur_page * page_size; _i <= _lh->length && _i <= ((page_size)*(cur_page+1) - 2); _i++, local_pos.Y++) {
-        student* tmp = get_student_by_id(_lh, _i);
-        SCP(local_pos);
-        printf((s == _i)?"\xB3\x1b[47;30m ":"\xB3 ");
-        chcp(1251); printf("%6s", tmp->group);
-        chcp(866); printf("\x20\xB3\x20");
-        chcp(1251); printf("%s", tmp->surname);
-        uint spaces_count = main_size.X - 62 - strlen(tmp->surname);
-        for (uint _i = 0; _i < spaces_count; _i++)
-            printf(" ");
-        chcp(866); printf("\x20\xB3\x20");
-        for (uint _i = 0; _i < (12 - intlen(tmp->birth_year)) / 2; _i++) printf(" ");
-        chcp(1251); printf("%4d", tmp->birth_year);
-        for (uint _i = 0; _i < (12 - intlen(tmp->birth_year)) - (12 - intlen(tmp->birth_year)) / 2; _i++) printf(" ");
-        chcp(866); printf("\x20\xB3\x20\x20");
-        chcp(1251); printf((tmp->man) ? "М" : "Ж");
-        chcp(866); printf("\x20\x20\xB3\x20");
-        printf("%9d\x20\xB3\x20%-9d\x20\x1b[0m\xB3", tmp->skipped_hours, tmp->acquired_hours);
-        // _getch();
-    }
     SCP(local_pos);
-    printf("\xC0\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC1");
-    for (uint _i = 0; _i < main_size.X - 60; _i++) printf("\xC4");
-    printf("\xC1\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC1\xC4\xC4\xC4\xC4\xC4\xC1\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC1\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xD9");
+
+    // Левая граница и заголовок "Группа"
+    printf("\xb3 ");
+    chcp(1251); printf("%s", headers[0]);
+    chcp(866); printf(" \xb3 ");
+
+    uint surname_header_left_padding = (surname_width - strlen(headers[1])) / 2;
+    for (uint _i = 0; _i < surname_header_left_padding; _i++) printf(" ");
+    chcp(1251); printf("%s", headers[1]);
+    for (uint _i = 0; _i < surname_width - strlen(headers[1]) - surname_header_left_padding; _i++) printf(" ");
+    chcp(866); printf(" \xb3 ");
+    chcp(1251); printf("%s", headers[2]);
+    chcp(866); printf(" \xb3 ");
+    chcp(1251); printf("%s", headers[3]);
+    chcp(866); printf(" \xb3  ");
+    chcp(1251); printf("%s", headers[4]);
+    chcp(866); printf("  \xb3  ");
+    chcp(1251); printf("%s", headers[5]);
+    chcp(866); printf("  \xb3");
+
     local_pos.Y++;
     SCP(local_pos);
-    for (uint _i = 0; _i < main_size.X / 2 - (8 + intlen(cur_page+1) + intlen((_lh->length % page_size) ? (_lh->length / page_size + 1) : (_lh->length / page_size))); _i++) printf("\x20");
-    printf("<-  Page: %d / %d  ->", cur_page+1, (_lh->length % page_size) ? (_lh->length / page_size + 1) : (_lh->length / page_size));
-    for (uint _i = 0; _i < main_size.X / 2 - (8 + intlen(cur_page+1) + intlen((_lh->length % page_size) ? (_lh->length / page_size + 1) : (_lh->length / page_size))); _i++) printf("\x20");
-    while (local_pos.Y < main_pos.Y + main_size.Y - 1) {
+    chcp(866); printf("\xc3\xc4");
+    for (uint _i = 0; _i < group_width; _i++) printf("\xc4");
+    printf("\xc4\xc1\xc4");
+    for (uint _i = 0; _i < surname_width; _i++) printf("\xc4");
+    printf("\xc4\xc1\xc4");
+    for (uint _i = 0; _i < birthyear_width; _i++) printf("\xc4");
+    printf("\xc4\xc1\xc4");
+    for (uint _i = 0; _i < gender_width; _i++) printf("\xc4");
+    printf("\xc4\xc1\xc4");
+    for (uint _i = 0; _i < skipped_hours_with; _i++) printf("\xc4");
+    printf("\xc4\xc1\xc4");
+    for (uint _i = 0; _i < acuired_hours_width; _i++) printf("\xc4");
+    printf("\xc4\xb4");
+
+    uint showed_items = 0;
+    list_item* tmp = get_student_by_id(_lh, current_page*page_size);
+    for (uint _i = 0; _i < page_size && tmp; _i++, tmp = tmp->next, showed_items++) {
         local_pos.Y++;
         SCP(local_pos);
-        for (uint _i = 0; _i < main_size.X - 4; _i++) printf("\x20");
+        printf(((_i+current_page*page_size) == selected)?"\xb3\x1b[47;30m ":"\xb3 ");
+        chcp(1251); printf("%6.6s   ", tmp->inf->group);
+        printf("%s", tmp->inf->surname);
+        for (uint _j = 0; _j < surname_width - strlen(tmp->inf->surname); _j++) printf(" ");
+        printf("       %4.4d        %c    %11d   %-11d", tmp->inf->birth_year, (tmp->inf->man)?'М':'Ж', tmp->inf->skipped_hours, tmp->inf->acquired_hours);
+        chcp(866); printf(" \x1b[0m\xb3");
     }
 
+    local_pos.Y++;
+    SCP(local_pos);
+
+    printf("\xc0");
+    for (uint _i = 0; _i < table_width - 2; _i++) printf("\xc4");
+    printf("\xd9");
+
+    local_pos.Y++;
+    SCP(local_pos);
+    char page_string[26] = "\0";
+    if (current_page <= 0) {  // Первая страница (без левой стрелочки)
+        if (page_count == 1) {  // Нет даже второй страницы
+            sprintf(page_string, "    Page: %d / %d    ", current_page + 1, page_count);
+        } else {
+            sprintf(page_string, "    Page: %d / %d  ->", current_page + 1, page_count);
+        }
+    } else {
+        if (current_page + 1 == page_count) {
+            sprintf(page_string, "<-  Page: %d / %d    ", current_page + 1, page_count);
+        } else {
+            sprintf(page_string, "<-  Page: %d / %d  ->", current_page + 1, page_count);
+        }
+    }
+    uint page_string_left_padding = (table_width - strlen(page_string)) / 2;
+    for (uint _i = 0; _i < page_string_left_padding; _i++) printf(" ");
+    printf("%s", page_string);
+    for (uint _i = 0; _i < table_width - strlen(page_string) - page_string_left_padding; _i++) printf(" ");
+    
+    for (uint _i = 0; _i < page_size - showed_items; _i++) {
+        local_pos.Y++;
+        SCP(local_pos);
+        for (uint _j = 0; _j < table_width; _j++) printf(" ");
+    }
+
+    // Ну а теперь обработаем действия клавишами
     while (1) {
         uchar a = _getch();
         COORD _local_pos = menu_pos;
         _local_pos.Y += menu_size.Y - 1;
         SCP(_local_pos);
         printf("Entered %d    ", a);
-        if (a == 'e' || a == 243 || a == 13) {
-            student* editable = get_student_by_id(_lh, s);
+        if (a == 'e' || a == 243 || a == 13) {  // Edit
+            student* editable = get_student_by_id(_lh, selected)->inf;
             *(editable) = *(enter_data(editable));
             goto draw_table;
-        } else if (a == 'n' || a == 226) {
-            add_student(_lh, *(enter_data(NULL)));
+        } else if (a == 'n' || a == 226) {  // Add new
+            student* _st = enter_data(NULL);
+            if (_st) add_student(_lh, *_st);
             goto draw_table;
-        } else if (a == 224) {
-            // Arrow key
+        } else if (a == 224) {  // Arrow key
             uchar b = _getch();
-            if (b == 72 && s > cur_page*page_size) {
-                s--;
-                if (s > _lh->length) s = _lh->length;
-                // SCP(menu);
-                // uint last_on_page = page_size*(cur_page+1) - 1;
-                // uint post = (s < last_on_page) ? s+1 : s;
-                // printf("S = %d, LOP = %d, POST = %d        ", s, last_on_page, post);
-                for (uint _i = s; _i <= ((s < page_size*(cur_page+1) - 1) ? s+1 : s); _i++) {
-                    local_pos.Y = main_pos.Y + 4 + (_i % page_size);
-                    student* tmp = get_student_by_id(_lh, _i);
-                    if (!tmp) continue;
-                    SCP(local_pos);
-                    printf((s == _i)?"\xB3\x1b[47;30m ":"\xB3 ");
-                    chcp(1251); printf("%6s", tmp->group);
-                    chcp(866); printf("\x20\xB3\x20");
-                    chcp(1251); printf("%s", tmp->surname);
-                    uint spaces_count = main_size.X - 62 - strlen(tmp->surname);
-                    for (uint _i = 0; _i < spaces_count; _i++)
-                        printf(" ");
-                    chcp(866); printf("\x20\xB3\x20");
-                    for (uint _i = 0; _i < (12 - intlen(tmp->birth_year)) / 2; _i++) printf(" ");
-                    chcp(1251); printf("%4d", tmp->birth_year);
-                    for (uint _i = 0; _i < (12 - intlen(tmp->birth_year)) - (12 - intlen(tmp->birth_year)) / 2; _i++) printf(" ");
-                    chcp(866); printf("\x20\xB3\x20\x20");
-                    chcp(1251); printf((tmp->man) ? "М" : "Ж");
-                    chcp(866); printf("\x20\x20\xB3\x20");
-                    printf("%9d\x20\xB3\x20%-9d\x20\x1b[0m\xB3", tmp->skipped_hours, tmp->acquired_hours);
-                }
-            } else if (b == 80 && s < _lh->length && s < (cur_page+1)*page_size - 2) {
-                s++;
-                for (uint _i = (s>cur_page*page_size)?s-1:s; _i <= s; _i++) {
-                    local_pos.Y = main_pos.Y + 4 + (_i % page_size);
-                    student* tmp = get_student_by_id(_lh, _i);
-                    if (!tmp) continue;
-                    SCP(local_pos);
-                    printf((s == _i)?"\xB3\x1b[47;30m ":"\xB3 ");
-                    chcp(1251); printf("%6s", tmp->group);
-                    chcp(866); printf("\x20\xB3\x20");
-                    chcp(1251); printf("%s", tmp->surname);
-                    uint spaces_count = main_size.X - 62 - strlen(tmp->surname);
-                    for (uint _i = 0; _i < spaces_count; _i++)
-                        printf(" ");
-                    chcp(866); printf("\x20\xB3\x20");
-                    for (uint _i = 0; _i < (12 - intlen(tmp->birth_year)) / 2; _i++) printf(" ");
-                    chcp(1251); printf("%4d", tmp->birth_year);
-                    for (uint _i = 0; _i < (12 - intlen(tmp->birth_year)) - (12 - intlen(tmp->birth_year)) / 2; _i++) printf(" ");
-                    chcp(866); printf("\x20\xB3\x20\x20");
-                    chcp(1251); printf((tmp->man) ? "М" : "Ж");
-                    chcp(866); printf("\x20\x20\xB3\x20");
-                    printf("%9d\x20\xB3\x20%-9d\x20\x1b[0m\xB3", tmp->skipped_hours, tmp->acquired_hours);
-                }
-            } else if (b == 83) {
-                remove_student_by_id(_lh, s);
+            if (b == 83) {  // Delete
+                remove_student_by_id(_lh, selected);
+                if (selected % page_size == 0)
+                if (selected > _lh->length) selected--;
                 goto draw_table;
-            } else if (b == 75 && cur_page > 0) {
-                cur_page--;
-                s -= page_size;
+            } else if (b == 71 && current_page > 0) {  // Home
+                selected -= current_page * page_size;
+                current_page = 0;
                 goto draw_table;
-            } else if (b == 77 && cur_page < _lh->length / page_size) {
-                s += page_size;
-                cur_page++;
+            } else if (b == 79 && (current_page+1)*page_size < _lh->length) {  // End
+                selected = (page_count-1)*page_size + selected - current_page*page_size;
+                if (selected >= _lh->length) selected = _lh->length;
+                current_page = page_count - 1;
                 goto draw_table;
+            } else if (b == 75 && current_page > 0) {  // Left
+                selected -= page_size;
+                current_page--;
+                goto draw_table;
+            } else if (b == 77 && current_page < page_count-1) {  // Right
+                selected += page_size;
+                current_page++;
+                if (selected >= _lh->length) selected = _lh->length;
+                goto draw_table;
+            } else if (b == 72 && selected > current_page*page_size) {  // Arrow Up
+                selected--;
+                local_pos.Y = main_pos.Y + 4 + (selected % page_size);
+                SCP(local_pos);
+
+                tmp = get_student_by_id(_lh, selected);
+                printf("\xb3\x1b[47;30m ");
+                chcp(1251); printf("%6.6s   ", tmp->inf->group);
+                printf("%s", tmp->inf->surname);
+                for (uint _i = 0; _i < surname_width - strlen(tmp->inf->surname); _i++) printf(" ");
+                printf("       %4.4d        %c    %11d   %-11d", tmp->inf->birth_year, (tmp->inf->man)?'М':'Ж', tmp->inf->skipped_hours, tmp->inf->acquired_hours);
+                chcp(866); printf(" \x1b[0m\xb3");
+
+                local_pos.Y++;
+                SCP(local_pos);
+                tmp = tmp->next;
+                printf("\xb3\x1b[0m ");
+                chcp(1251); printf("%6.6s   ", tmp->inf->group);
+                printf("%s", tmp->inf->surname);
+                for (uint _i = 0; _i < surname_width - strlen(tmp->inf->surname); _i++) printf(" ");
+                printf("       %4.4d        %c    %11d   %-11d", tmp->inf->birth_year, (tmp->inf->man)?'М':'Ж', tmp->inf->skipped_hours, tmp->inf->acquired_hours);
+                chcp(866); printf(" \x1b[0m\xb3");
+            } else if (b == 80 && selected < (current_page+1)*page_size - 1 && selected < _lh->length) {  // Arrow Down
+                selected++;
+                local_pos.Y = main_pos.Y + 3 + (selected % page_size);
+                SCP(local_pos);
+
+                tmp = get_student_by_id(_lh, selected-1);
+                printf("\xb3\x1b[0m ");
+                chcp(1251); printf("%6.6s   ", tmp->inf->group);
+                printf("%s", tmp->inf->surname);
+                for (uint _i = 0; _i < surname_width - strlen(tmp->inf->surname); _i++) printf(" ");
+                printf("       %4.4d        %c    %11d   %-11d", tmp->inf->birth_year, (tmp->inf->man)?'М':'Ж', tmp->inf->skipped_hours, tmp->inf->acquired_hours);
+                chcp(866); printf(" \x1b[0m\xb3");
+
+                local_pos.Y++;
+                SCP(local_pos);
+                tmp = tmp->next;
+                printf("\xb3\x1b[47;30m ");
+                chcp(1251); printf("%6.6s   ", tmp->inf->group);
+                printf("%s", tmp->inf->surname);
+                for (uint _i = 0; _i < surname_width - strlen(tmp->inf->surname); _i++) printf(" ");
+                printf("       %4.4d        %c    %11d   %-11d", tmp->inf->birth_year, (tmp->inf->man)?'М':'Ж', tmp->inf->skipped_hours, tmp->inf->acquired_hours);
+                chcp(866); printf(" \x1b[0m\xb3");
             }
-        } else if (a == 3) {
+        } else if (a == 3) {  // Ctrl + C
             del_list(_lh);
+            system("cls");
             return;
-        } else if (a == 18) {
+        } else if (a == 5) {  // Ctrl + E
+            // Export to csv or txt file
+        } else if (a == 18) {  // Ctrl + R
             create_layout();
             goto table_start;
-        } else if (a == 9) {
-            // Tab — switch to menu
+        } else if (a == 9) {  // Tab — switch to menu
             menu(1, _lh);
-            show_second_hint("\x1b[47;30m N \x1b[0m Добавить   \x1b[47;30m DEL \x1b[0m Удалить   \x1b[47;30m E / Enter \x1b[0m Изменить   \x1b[47;30m ^S \x1b[0m Сохранить в фай    \x1b[47;30m ^O \x1b[0m Открыть из файла    \x1b[47;30m Tab \x1b[0m Перейти в меню");
             goto draw_table;
-        } else if (a == 19) {
-            // Ctrl + S
+        } else if (a == 19) {  // Ctrl + S
             save_list_to_file(_lh);
             goto draw_table;
-        } else if (a == 15) {
-            // Ctrl + O
+        } else if (a == 15) {  // Ctrl + O
             read_list_from_file(_lh);
             goto draw_table;
         }
+        show_second_hint(table_hints);
     }
+}
+
+void show_table(list_header* _lh) {
+    show_table_with_title(_lh, "Test title");
 }
 
 /// @brief Функция для запроса имени файла от пользователя и сохранения списка в этот файл
 /// @param _lh Указатель на голову списка для записи
-void save_list_to_file(list_header* _lh) {
+inline void save_list_to_file(list_header* _lh) {
     if (!_lh || !(_lh->first)) return;
     char file_name[47] = "\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0";
     COORD local_pos = main_pos;
@@ -1095,7 +1224,7 @@ void save_list_to_file(list_header* _lh) {
 
 /// @brief Функция для чтения списка из файла
 /// @param _lh Указатель на голову списка, в который будут помещены данные
-void read_list_from_file(list_header* _lh) {
+inline void read_list_from_file(list_header* _lh) {
     if (!_lh) return;
     char file_name[47] = "\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0";
     COORD local_pos = main_pos;
@@ -1108,7 +1237,7 @@ void read_list_from_file(list_header* _lh) {
     SCP(local_pos);
     printf("\xB3        ");
     chcp(1251);
-    printf("Введите имя файла для сохранения");
+    printf("  Введите имя файла для чтения  ");
     chcp(866);
     printf("        \xB3");
     local_pos.Y++;
@@ -1169,11 +1298,8 @@ void read_list_from_file(list_header* _lh) {
 
 /// @brief Функция для вывода меню
 /// @param _interactive Можно ли пользователю взаимодействовать с меню при данном вызове
-/// @return код выхода (для неинтерактивного режима всегда 0)
-int menu(char _interactive, list_header* _lh) {
-    int selected = 0;
+inline void menu(char _interactive, list_header* _lh) {
     #define _menu_items 8
-    char _sort_direction = 1;
     COORD local_pos = menu_pos;
     COORD item_pos[8] = {
         {menu_pos.X, menu_pos.Y},                                                         // Направление сортировки
@@ -1199,32 +1325,28 @@ int menu(char _interactive, list_header* _lh) {
     if (!_interactive) {
         // Print only items, without selecting
         SCP(item_pos[0]);
-        if (selected == 0) printf("\x1b[47;30m");
         printf("%s: %s", item_str[0], ((_sort_direction) ? ("по возрастанию") : ("по убыванию")));
         for (uint _i = 0; _i < (menu_size.X - strlen(item_str[0]) - strlen((_sort_direction) ? ("по возрастанию") : ("по убыванию")) - 2); _i++) printf("\x20");
-        printf("\x1b[0m");
         for (int _i = 1; _i < 8; _i++) {
             SCP(item_pos[_i]);
-            if (_i == selected) printf("\x1b[47;30m");
             printf("%s", item_str[_i]);
             for (uint _j = 0; _j < (menu_size.X - strlen(item_str[_i])); _j++) printf("\x20");
-            printf("\x1b[0m");
         }
-        return 0;
+        return;
     } else {
         // Print menu with selected
         clear_second_hint();
-        show_second_hint("\x1b[47;30m Enter \x1b[0m Выбрать   \x1b[47;30m Up/Down \x1b[0m Перемещение курсора    \x1b[45;30m Tab \x1b[0m Вернуться к таблице    ");
+        show_second_hint("\x1b[47;30m Enter \x1b[0m Выбрать   \x1b[47;30m Up/Down \x1b[0m Перемещение курсора    \x1b[47;30m Tab \x1b[0m Вернуться к таблице    ");
 
         while (1) {
             SCP(item_pos[0]);
-            if (selected == 0) printf("\x1b[47;30m");
+            if (menu_selected == 0) printf("\x1b[47;30m");
             printf("%s: %s", item_str[0], ((_sort_direction) ? ("по возрастанию") : ("по убыванию")));
             for (uint _i = 0; _i < (menu_size.X - strlen(item_str[0]) - strlen((_sort_direction) ? ("по возрастанию") : ("по убыванию")) - 2); _i++) printf("\x20");
             printf("\x1b[0m");
             for (int _i = 1; _i < 8; _i++) {
                 SCP(item_pos[_i]);
-                if (_i == selected) printf("\x1b[47;30m");
+                if (_i == menu_selected) printf("\x1b[47;30m");
                 printf("%s", item_str[_i]);
                 for (uint _j = 0; _j < (menu_size.X - strlen(item_str[_i])); _j++) printf("\x20");
                 printf("\x1b[0m");
@@ -1235,32 +1357,35 @@ int menu(char _interactive, list_header* _lh) {
                 uchar b = _getch();
                 if (b == 72) {
                     // Стрелка вверх
-                    if (selected > 0) selected--;
+                    if (menu_selected > 0) menu_selected--;
                 } else if (b == 80) {
                     // Стрелка вниз
-                    if (selected < _menu_items - 1) selected++;
+                    if (menu_selected < _menu_items - 1) menu_selected++;
                 } else if (b == 75 || b == 77) {
                     // Стрелка влево или вправо
-                    if (selected == 0) _sort_direction = !_sort_direction;
+                    if (menu_selected == 0) _sort_direction = !_sort_direction;
                 }
             } else if (a == 9) {
                 // Tab
-                SCP(item_pos[selected]);
-                printf("%s", item_str[selected]);
-                for (uint _j = 0; _j < (menu_size.X - strlen(item_str[selected])); _j++) printf("\x20");
+                SCP(item_pos[menu_selected]);
+                if (menu_selected == 0) printf("%s: %s", item_str[0], ((_sort_direction) ? ("по возрастанию") : ("по убыванию")));
+                else printf("%s", item_str[menu_selected]);
+                if (menu_selected != 0) for (uint _j = 0; _j < (menu_size.X - strlen(item_str[menu_selected])); _j++) printf("\x20");
+                else for (uint _i = 0; _i < (menu_size.X - strlen(item_str[0]) - strlen((_sort_direction) ? ("по возрастанию") : ("по убыванию")) - 2); _i++) printf("\x20");
                 printf("\x1b[0m");
-                return 0;
+                return;
             } else if (a == 13) {
                 // Enter
-                if (selected == 0) _sort_direction = !_sort_direction;
+                if (menu_selected == 0) _sort_direction = !_sort_direction;
                 else {
-                    sort_list(_lh, selected, _sort_direction);
-                    SCP(item_pos[selected]);
-                    printf("%s", item_str[selected]);
-                    for (uint _j = 0; _j < (menu_size.X - strlen(item_str[selected])); _j++) printf("\x20");
-                    printf("\x1b[0m");
-                    return 0;
+                    sort_list(_lh, menu_selected, _sort_direction);
+                    menu(0, _lh);
+                    return;
                 }
+            } else if (a == 3) {
+                del_list(_lh);
+                system("cls");
+                exit(0);
             }
         }
     }
@@ -1270,7 +1395,7 @@ int menu(char _interactive, list_header* _lh) {
 /// @param _lh Указатель на голову списка
 /// @param _field Номер поля, по которому сортировать (1 — группа, ... , 7 — число неоправданных часов)
 /// @param _direction Направление сортировки (1 — по возрастанию, 0 — по убыванию)
-void sort_list(list_header* _lh, char _field, char _direction) {
+inline void sort_list(list_header* _lh, char _field, char _direction) {
     if (!_lh || !(_lh->first) || !(_lh->first->next)) return;
     if (_direction == 1) {
         switch (_field) {
@@ -1437,7 +1562,7 @@ void sort_list(list_header* _lh, char _field, char _direction) {
 }
 
 /// @brief Функция для очистки области с меню
-void clear_menu() {
+inline void clear_menu() {
     COORD local_pos = menu_pos;
     for (uint _i = 0; _i < menu_size.Y; _i++, local_pos.Y++) {
         SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), local_pos);
@@ -1446,7 +1571,7 @@ void clear_menu() {
 }
 
 /// @brief Функция для очистки области с подсказками
-void clear_hint() {
+inline void clear_hint() {
     COORD local_pos = hint_pos;
     for (uint _i = 0; _i < 2; _i++, local_pos.Y++) {
         SCP(local_pos);
@@ -1455,7 +1580,7 @@ void clear_hint() {
 }
 
 /// @brief Функция для очистки второй строки области подсказок
-void clear_second_hint() {
+inline void clear_second_hint() {
     COORD local_pos = hint_pos;
     local_pos.Y++;
     SCP(local_pos);
