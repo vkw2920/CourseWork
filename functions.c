@@ -44,7 +44,19 @@ COORD hint_size = { 0, 0 };       // Размеры блока подсказок (определяется при з
 int menu_selected = 0;
 char _sort_direction = 1;
 
-char table_hints[] = "\x1b[47;30m N \x1b[0m Добавить   \x1b[47;30m DEL \x1b[0m Удалить   \x1b[47;30m E \x1b[0m Изменить   \x1b[47;30m ^S / ^O \x1b[0m Сохранить/Открыть из файла    \x1b[47;30m Tab \x1b[0m Перейти в меню";
+/// @brief Функция для преобразования строки в нижний регистр (только для латиницы)
+/// @param _str Указатель на первый символ строки (или просто Си-строка)
+/// @return Тот же указатель, после изменения строки
+inline char* strlower(char* _str) {
+    if (!_str) return _str;
+    size_t len = strlen(_str);
+    for (uint _i = 0; _i < len; _i++) {
+        if (_str[_i] >= 65 && _str[_i] <= 90) {
+            _str[_i] += 32;
+        }
+    }
+    return _str;
+}
 
 /// @brief Алиас для упрощения перемещения курсора в консоли
 /// @param _pos позиция курсора в структуре COORD
@@ -299,9 +311,8 @@ void intlen_test() {
 /// @param _data Указатель на изменяемое информационное поле или NULL для создания нового 
 /// @return Указатель на информационное поле с полученными от пользователя данными
 student* enter_data(student* _d) {
-    if (!_d) _d = (student*)calloc(1, sizeof(student));
     student* _data = (student*)calloc(1, sizeof(student));
-    *_data = *_d;
+    if (_d) *_data = *_d;
     COORD local_pos = main_pos;
     local_pos.X += (main_size.X - 40) / 2;
     local_pos.Y += (main_size.Y > 21) ? (main_size.Y / 2 - 8) : (main_size.Y / 2 - 4);
@@ -830,6 +841,7 @@ student* enter_data(student* _d) {
 /// @param _title Заголовок таблицы
 void show_table_with_title(list_header* _lh, char* _title) {
     COORD local_pos;
+    char table_hints[] = "\x1b[47;30m N \x1b[0m Добавить   \x1b[47;30m DEL \x1b[0m Удалить   \x1b[47;30m E \x1b[0m Изменить   \x1b[47;30m ^S / ^O \x1b[0m Сохранить/Открыть из файла   \x1b[47;30m ^E \x1b[0m Экспорт в файл    \x1b[47;30m Tab \x1b[0m Перейти в меню";
 
     char format[20] = "\0";
     const char* headers[6] = {
@@ -997,8 +1009,10 @@ void show_table_with_title(list_header* _lh, char* _title) {
             uchar b = _getch();
             if (b == 83) {  // Delete
                 remove_student_by_id(_lh, selected);
-                if (selected % page_size == 0)
+                if (selected % page_size == 0) {current_page--; selected--;}
                 if (selected > _lh->length) selected--;
+                uint page_count = _lh->length / page_size;
+                if (current_page >= page_count) current_page = page_count - 1;
                 goto draw_table;
             } else if (b == 71 && current_page > 0) {  // Home
                 selected -= current_page * page_size;
@@ -1040,6 +1054,10 @@ void show_table_with_title(list_header* _lh, char* _title) {
                 for (uint _i = 0; _i < surname_width - strlen(tmp->inf->surname); _i++) printf(" ");
                 printf("       %4.4d        %c    %11d   %-11d", tmp->inf->birth_year, (tmp->inf->man)?'М':'Ж', tmp->inf->skipped_hours, tmp->inf->acquired_hours);
                 chcp(866); printf(" \x1b[0m\xb3");
+            } else if (b == 72 && current_page > 0) {  // Arrow Up — To prev page
+                selected--;
+                current_page--;
+                goto draw_table;
             } else if (b == 80 && selected < (current_page+1)*page_size - 1 && selected < _lh->length) {  // Arrow Down
                 selected++;
                 local_pos.Y = main_pos.Y + 3 + (selected % page_size);
@@ -1062,6 +1080,10 @@ void show_table_with_title(list_header* _lh, char* _title) {
                 for (uint _i = 0; _i < surname_width - strlen(tmp->inf->surname); _i++) printf(" ");
                 printf("       %4.4d        %c    %11d   %-11d", tmp->inf->birth_year, (tmp->inf->man)?'М':'Ж', tmp->inf->skipped_hours, tmp->inf->acquired_hours);
                 chcp(866); printf(" \x1b[0m\xb3");
+            } else if (b == 80 && current_page < page_count - 1) {  // Arrow Down — To next page
+                selected++;
+                current_page++;
+                goto draw_table;
             }
         } else if (a == 3) {  // Ctrl + C
             del_list(_lh);
@@ -1069,25 +1091,137 @@ void show_table_with_title(list_header* _lh, char* _title) {
             return;
         } else if (a == 5) {  // Ctrl + E
             // Export to csv or txt file
-        } else if (a == 18) {  // Ctrl + R
-            create_layout();
-            goto table_start;
+            export_list_to_file(_lh);
+            goto draw_table;
         } else if (a == 9) {  // Tab — switch to menu
             menu(1, _lh);
-            goto draw_table;
-        } else if (a == 19) {  // Ctrl + S
-            save_list_to_file(_lh);
             goto draw_table;
         } else if (a == 15) {  // Ctrl + O
             read_list_from_file(_lh);
             goto draw_table;
+        } else if (a == 18) {  // Ctrl + R
+            create_layout();
+            goto table_start;
+        } else if (a == 19) {  // Ctrl + S
+            save_list_to_file(_lh);
+            goto draw_table;
         }
-        show_second_hint(table_hints);
+        // show_second_hint(table_hints);
     }
 }
 
-void show_table(list_header* _lh) {
-    show_table_with_title(_lh, "Test title");
+/// @brief Алиас для вызова функции show_table_with_title() с заголовком по умолчанию
+/// @param _lh Указатель на голову списка
+inline void show_table(list_header* _lh) {
+    show_table_with_title(_lh, "Список студентов");
+}
+
+inline void export_list_to_file(list_header* _lh) {
+    if (!_lh || !(_lh->first)) return;
+    char file_name[47] = "\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0";
+    COORD local_pos = main_pos;
+    local_pos.Y += (main_size.Y - 4) / 2;
+    local_pos.X += (main_size.X - 50) / 2;
+    chcp(866);
+    SCP(local_pos);
+    printf("\xDA\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xBF");
+    local_pos.Y++;
+    SCP(local_pos);
+    printf("\xB3        ");
+    chcp(1251);
+    printf("Введите имя файла для сохранения");
+    chcp(866);
+    printf("        \xB3");
+    local_pos.Y++;
+    SCP(local_pos);
+    printf("\xB3 ");
+    chcp(1251);
+    printf("%s", file_name);
+    for (uint _i = 0; _i < 46 - strlen(file_name); _i++) printf("_");
+    chcp(866);
+    printf(" \xB3");
+    local_pos.Y++;
+    SCP(local_pos);
+    printf("\xC0\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xD9");
+    local_pos.Y--;
+    while (1) {
+        uchar a = _getch();
+        if (a == 13) {  // Enter
+            char extension[4] = {0};
+            for (uint _i = 0; _i < 3; _i++) extension[_i] = file_name[strlen(file_name) - 3 + _i];
+            if (!strcmp(strlower(extension), "txt")) {  // Export to TXT file
+                FILE* out = fopen(file_name, "wt");
+                if (!out) {
+                    SCP(local_pos);
+                    printf("\xB3 ");
+                    chcp(1251);
+                    printf("            Ошибка открытия файла.            ");
+                    Sleep(1000);
+                    return;
+                }
+                for (list_item* tmp = _lh->first; tmp; tmp = tmp->next) {
+                    fprintf(
+                        out,
+                        "Студент:\n    Группа: %s\n    Фамилия: %s\n    Пол: %s\n    Год рождения: %d\n    Пропущено часов: %d\n    Оправдано часов: %d\n    Неоправданных часов: %d\n\n",
+                        tmp->inf->group,
+                        tmp->inf->surname,
+                        tmp->inf->man?"Мужской":"Женский",
+                        tmp->inf->birth_year,
+                        tmp->inf->skipped_hours,
+                        tmp->inf->acquired_hours,
+                        tmp->inf->skipped_hours - tmp->inf->acquired_hours
+                    );
+                }
+                fclose(out);
+            } else if (!strcmp(strlower(extension), "csv")) {  // Export to CSV file
+                FILE* out = fopen(file_name, "wt");
+                if (!out) {
+                    SCP(local_pos);
+                    printf("\xB3 ");
+                    chcp(1251);
+                    printf("            Ошибка открытия файла.            ");
+                    Sleep(1000);
+                    return;
+                }
+                fprintf(out, "\"Группа\";\"Фамилия\";\"Пол\";\"Год рождения\";\"Пропущено часов\";\"Оправдано часов\";\"Неоправдано часов\";\n");
+                for (list_item* tmp = _lh->first; tmp; tmp = tmp->next) {
+                    fprintf(
+                        out,
+                        "\"%s\";\"%s\";\"%s\";%d;%d;%d;%d;\n",
+                        tmp->inf->group,
+                        tmp->inf->surname,
+                        tmp->inf->man?"Мужской":"Женский",
+                        tmp->inf->birth_year,
+                        tmp->inf->skipped_hours,
+                        tmp->inf->acquired_hours,
+                        tmp->inf->skipped_hours - tmp->inf->acquired_hours
+                    );
+                }
+                fclose(out);
+            } else {  // Unknown extension
+                SCP(local_pos);
+                printf("\xB3 ");
+                chcp(1251);
+                printf("        Расширение файла не определено        ");
+                Sleep(1000);
+            }
+            return;
+        } else if (a == 224) {  // Filter for arrows and other special keys
+            _getch();
+        } else if ((a >= 32 && a <= 126) || (a >= 192 && a <= 255)) {  // Any character
+            if (strlen(file_name) < 46) file_name[strlen(file_name)] = a;
+        } else if (a == 8) {  // Backspace
+            file_name[strlen(file_name) - 1] = '\0';
+        } else if (a == 27) {  // ESC
+            return;
+        }
+        SCP(local_pos);
+        printf("\xB3 ");
+        chcp(1251);
+        printf("%s", file_name);
+        for (uint _i = 0; _i < 46 - strlen(file_name); _i++) printf("_");
+        chcp(866);
+    }
 }
 
 /// @brief Функция для запроса имени файла от пользователя и сохранения списка в этот файл
@@ -1131,7 +1265,7 @@ inline void save_list_to_file(list_header* _lh) {
                 SCP(local_pos);
                 chcp(1251);
                 printf("           Не удалось создать файл.           ");
-                _getch();
+                Sleep(1000);
             } else {
                 fseek(out, 0, SEEK_END);
                 if (ftell(out) > 0) {
@@ -1195,6 +1329,7 @@ inline void save_list_to_file(list_header* _lh) {
                             return;
                         }
                     }
+                    local_pos.X+=2;
                     SCP(local_pos);
                     chcp(1251);
                     printf("            Данные записаны в файл            ");
@@ -1302,14 +1437,14 @@ inline void menu(char _interactive, list_header* _lh) {
     #define _menu_items 8
     COORD local_pos = menu_pos;
     COORD item_pos[8] = {
-        {menu_pos.X, menu_pos.Y},                                                         // Направление сортировки
+        {menu_pos.X, menu_pos.Y},     // Направление сортировки
         {menu_pos.X, menu_pos.Y+1},   // Сортировать по группе
         {menu_pos.X, menu_pos.Y+2},   // Сортировать по фамилии
         {menu_pos.X, menu_pos.Y+3},   // Сортировать по году рождения
         {menu_pos.X, menu_pos.Y+4},   // Сортировать по полу
-        {menu_pos.X, menu_pos.Y+5},  // Сортировать по числу пропущенных часов
-        {menu_pos.X, menu_pos.Y+6},  // Сортировать по числу оправданных часов
-        {menu_pos.X, menu_pos.Y+7},  // Сортировать по числу неоправданных часов
+        {menu_pos.X, menu_pos.Y+5},   // Сортировать по числу пропущенных часов
+        {menu_pos.X, menu_pos.Y+6},   // Сортировать по числу оправданных часов
+        {menu_pos.X, menu_pos.Y+7},   // Сортировать по числу неоправданных часов
     };
     const char* item_str[_menu_items] = {
         "Сортировка",

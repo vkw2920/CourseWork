@@ -37,6 +37,7 @@ typedef struct list_header {
     uint length;
 } list_header;
 
+char* strlower(char*);
 list_header* new_list();
 void del_list(list_header*);
 student new_student(char _group[7], char _surname[16], short _birth_year, char _man, uint _skipped_hours, uint _acquired_hours);
@@ -62,6 +63,7 @@ void SCP(COORD);
 void chcp(int);
 void read_list_from_file(list_header*);
 void save_list_to_file(list_header*);
+void export_list_to_file(list_header*);
 
 
 
