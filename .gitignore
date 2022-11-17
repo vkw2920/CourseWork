@@ -1,10 +1,10 @@
 made
 
-main.exe
+*.exe
 .vscode
 bin
-c.exe
-file.dat
+
 *.dat
 123
-main_new.exe
+*.bin
+*.csv
