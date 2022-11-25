@@ -98,7 +98,7 @@ char* surnames[30] = {
 
 void list_apped(list_header* _lh) {
     if (DEBUD_MODE) printf("Main.exe: list_append called\n");
-    for (uint _i = 0; _i < 100; _i++) {
+    for (uint _i = 0; _i < 50; _i++) {
         if (DEBUD_MODE) printf("Main.exe: iteration %d in list_append\n", _i+1);
         uint skips = rand() % 999;
         add_student(_lh, new_student(groups[rand()%10], surnames[rand()%30], 2000+(rand()%20), rand()%2, skips, rand()%skips));
@@ -106,7 +106,7 @@ void list_apped(list_header* _lh) {
 }
 
 int main() {
-    // _getch();
+    Sleep(500);
     list_header* lh = new_list();
     if (lh) {
         create_layout();

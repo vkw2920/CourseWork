@@ -23,8 +23,8 @@
 #include "functions.h"
 
 // Отступы слева и сверху для таблички
-#define lp 3
-#define tp 2
+#define lp 6
+#define tp 3
 
 // Отступы для окна редактирования
 #define elp 40
@@ -36,7 +36,7 @@ COORD screen_end_pos = { 0, 0 };  // Координаты конца экрана (определяется при з
 COORD border_pos = { lp, tp };    // Координаты начала рамки
 COORD menu_pos = { 4, 3 };        // Координаты блока меню
 COORD menu_size = { 0, 0 };       // Размеры блока меню (определяется при запуске или перерисовке)
-COORD main_pos = { 34, 3 };       // Координаты главного блока (блока с данными) (определяется при запуске или перерисовке)
+COORD main_pos = { 31 + lp, 1 + tp };       // Координаты главного блока (блока с данными) (определяется при запуске или перерисовке)
 COORD main_size = { 0, 0 };       // Размеры главного блока (определяется при запуске или перерисовке)
 COORD hint_pos = { 4, 0 };        // Координаты блока подсказок (определяется при запуске или перерисовке)
 COORD hint_size = { 0, 0 };       // Размеры блока подсказок (определяется при запуске или перерисовке)
@@ -180,7 +180,10 @@ inline void create_layout() {
     }
     COORD border_lt = { lp, tp };
     uint window_w = screen_end_pos.X - lp * 2;
-    uint window_h = screen_end_pos.Y - tp * 2;
+    int window_h = screen_end_pos.Y - tp * 2;
+    if (window_h > 999) {
+        exit(screen_end_pos.Y);
+    }
     main_size.X = window_w - 32;
     main_size.Y = window_h - 5;
     hint_size.Y = 2;
@@ -190,28 +193,28 @@ inline void create_layout() {
     menu_size.X = 29;
     menu_size.Y = window_h - 5;
     hint_pos.X = menu_pos.X;
-    hint_pos.Y = menu_pos.Y + window_h - 5;
+    hint_pos.Y = menu_pos.Y + menu_size.Y;
     SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), border_lt);
     printf("\xC9");
-    for (uint _i = 0; _i < 29; _i++) printf("\xCD");
+    for (uint _i = 0; _i < menu_size.X; _i++) printf("\xCD");
     printf("\xCB");
     for (uint _i = 0; _i < main_size.X; _i++) printf("\xCD");
     printf("\xBB");
     SetConsoleOutputCP(old_cp);
     COORD border_l = border_lt;
-    for (uint _i = 0; _i < window_h - 5; _i++) {
+    for (uint _i = 0; _i < menu_size.Y; _i++) {
         border_l.Y++;
         SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), border_l);
         printf("\xBA");
-        for (uint _i = 0; _i < 29; _i++) printf("\x20");
+        for (uint _j = 0; _j < menu_size.X; _j++) printf("\x20");
         printf("\xBA");
-        for (uint _i = 0; _i < main_size.X; _i++) printf("\x20");
+        for (uint _j = 0; _j < main_size.X; _j++) printf("\x20");
         printf("\xBA");
     }
     border_l.Y++;
     SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), border_l);
     printf("\xCC");
-    for (uint _i = 0; _i < 29; _i++) printf("\xCD");
+    for (uint _i = 0; _i < menu_size.X; _i++) printf("\xCD");
     printf("\xCA");
     for (uint _i = 0; _i < main_size.X; _i++) printf("\xCD");
     printf("\xB9");
@@ -219,16 +222,16 @@ inline void create_layout() {
         border_l.Y++;
         SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), border_l);
         printf("\xBA");
-        for (uint _i = 0; _i < 29; _i++) printf("\x20");
+        for (uint _j = 0; _j < menu_size.X; _j++) printf("\x20");
         printf("\x20");
-        for (uint _i = 0; _i < main_size.X; _i++) printf("\x20");
+        for (uint _j = 0; _j < main_size.X; _j++) printf("\x20");
         printf("\xBA");
     }
     hint_pos.Y = border_l.Y - 1;
     border_l.Y++;
     SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), border_l);
     printf("\xC8");
-    for (uint _i = 0; _i < 29; _i++) printf("\xCD");
+    for (uint _i = 0; _i < menu_size.X; _i++) printf("\xCD");
     printf("\xCD");
     for (uint _i = 0; _i < main_size.X; _i++) printf("\xCD");
     printf("\xBC");
@@ -236,7 +239,7 @@ inline void create_layout() {
 
     // Сделать фон
     SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), screen_pos);
-    for (uint _i = 0; _i < screen_end_pos.X * 2; _i++) printf("\x1b[3%cm%c", '1' + (rand() % 7), '0' + (rand() % 2));
+    for (uint _i = 0; _i < screen_end_pos.X * tp; _i++) printf("\x1b[3%cm%c", '1' + (rand() % 7), '0' + (rand() % 2));
     screen_pos.Y += tp;
     for (uint _i = 0; _i < window_h; _i++) {
         screen_pos.X = 0;
@@ -249,7 +252,7 @@ inline void create_layout() {
     }
     screen_pos.X = screen_pos.Y = 0;
 
-    for (uint _i = 0; _i < screen_end_pos.X * 2; _i++) printf("\x1b[3%cm%c", '1' + (rand() % 7), '0' + (rand() % 2));
+    for (uint _i = 0; _i < screen_end_pos.X * tp; _i++) printf("\x1b[3%cm%c", '1' + (rand() % 7), '0' + (rand() % 2));
     printf("\x1b[0m");
     SetConsoleOutputCP(old_cp);
     show_base_hint("\x1b[33mПРЕДУПРЕЖДЕНИЕ\x1b[0m: Использование кириллических символов может привести к ошибкам в работе программы.");
@@ -524,7 +527,6 @@ student* enter_data(student* _d) {
                 _data->group[strlen(_data->group) - 1] = '\0';
             }
             else if (a == 27) {
-                clear_main();
                 return _d;
             }
             SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), item_pos[0]);
@@ -561,7 +563,6 @@ student* enter_data(student* _d) {
                 _data->surname[strlen(_data->surname) - 1] = '\0';
             }
             else if (a == 27) {
-                clear_main();
                 return _d;
             }
             SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), item_pos[0]);
@@ -603,7 +604,6 @@ student* enter_data(student* _d) {
                 _data->birth_year /= 10;
             }
             else if (a == 27) {
-                clear_main();
                 return _d;
             }
             SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), item_pos[1]);
@@ -637,7 +637,6 @@ student* enter_data(student* _d) {
             }
             else if (a == 13) _data->man = !(_data->man);
             else if (a == 27) {
-                clear_main();
                 return _d;
             }
             SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), item_pos[2]);
@@ -680,7 +679,6 @@ student* enter_data(student* _d) {
                 _data->skipped_hours /= 10;
             }
             else if (a == 27) {
-                clear_main();
                 return _d;
             }
             SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), item_pos[3]);
@@ -723,7 +721,6 @@ student* enter_data(student* _d) {
                 _data->acquired_hours /= 10;
             }
             else if (a == 27) {
-                clear_main();
                 return _d;
             }
             SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), item_pos[4]);
@@ -765,7 +762,6 @@ student* enter_data(student* _d) {
                 return _data;
             }
             else if (a == 27) {
-                clear_main();
                 return _d;
             }
             SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), item_pos[5]);
@@ -797,11 +793,9 @@ student* enter_data(student* _d) {
             }
             else if (a == 13) {
                 // Enter
-                clear_main();
                 return _d;
             }
             else if (a == 27) {
-                clear_main();
                 return _d;
             }
             SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), item_pos[5]);
@@ -832,7 +826,6 @@ student* enter_data(student* _d) {
     for (uint _i = 0; _i < local_w - 2; _i++) printf("\xC4");
     printf("\xD9");
     SetConsoleOutputCP(old_cp);
-    clear_main();
     return _data;
 }
 
@@ -841,7 +834,7 @@ student* enter_data(student* _d) {
 /// @param _title Заголовок таблицы
 void show_table_with_title(list_header* _lh, char* _title) {
     COORD local_pos;
-    char table_hints[] = "\x1b[47;30m N \x1b[0m Добавить   \x1b[47;30m DEL \x1b[0m Удалить   \x1b[47;30m E \x1b[0m Изменить   \x1b[47;30m ^S / ^O \x1b[0m Сохранить/Открыть из файла   \x1b[47;30m ^E \x1b[0m Экспорт в файл    \x1b[47;30m Tab \x1b[0m Перейти в меню";
+    char table_hints[] = "\x1b[47;30m N \x1b[0m Добавить   \x1b[47;30mDEL\x1b[0m Удалить   \x1b[47;30m E \x1b[0m Изменить   \x1b[47;30m ^S/^O \x1b[0m Работа с файлом   \x1b[47;30m ^E \x1b[0m Экспорт в файл   \x1b[47;30mTab\x1b[0m Перейти в меню";
 
     char format[20] = "\0";
     const char* headers[6] = {
@@ -859,7 +852,7 @@ void show_table_with_title(list_header* _lh, char* _title) {
     uint table_width = main_size.X - 2;  // Отступы слева и справа от таблицы
     uint table_hight = main_size.Y - 2;  // Место для заголовка и нумерации страниц
     uint page_size = table_hight - 4;
-    uint current_page = 0;
+    int current_page = 0;
     uint page_count = _lh->length / page_size;
     if (page_count*page_size < _lh->length) page_count++;
 
@@ -870,7 +863,7 @@ void show_table_with_title(list_header* _lh, char* _title) {
     uint acuired_hours_width = 11;
     uint surname_width = table_width - 19 - group_width - birthyear_width - gender_width - skipped_hours_with - acuired_hours_width;
 
-    uint selected = 0;
+    int selected = 0;
 
     local_pos = main_pos;
     local_pos.X++;
@@ -1010,8 +1003,11 @@ void show_table_with_title(list_header* _lh, char* _title) {
             if (b == 83) {  // Delete
                 remove_student_by_id(_lh, selected);
                 if (selected % page_size == 0) {current_page--; selected--;}
+                if (current_page < 0) current_page = 0;
+                if (selected < 0) selected = 0;
                 if (selected > _lh->length) selected--;
-                uint page_count = _lh->length / page_size;
+                page_count = _lh->length / page_size;
+                if (page_count*page_size < _lh->length+1) page_count++;
                 if (current_page >= page_count) current_page = page_count - 1;
                 goto draw_table;
             } else if (b == 71 && current_page > 0) {  // Home
@@ -1085,7 +1081,7 @@ void show_table_with_title(list_header* _lh, char* _title) {
                 current_page++;
                 goto draw_table;
             }
-        } else if (a == 3) {  // Ctrl + C
+        } else if (a == 3 || a == 27) {  // Ctrl + C
             del_list(_lh);
             system("cls");
             return;
@@ -1112,10 +1108,10 @@ void show_table_with_title(list_header* _lh, char* _title) {
 
 /// @brief Алиас для вызова функции show_table_with_title() с заголовком по умолчанию
 /// @param _lh Указатель на голову списка
-inline void show_table(list_header* _lh) {
-    show_table_with_title(_lh, "Список студентов");
-}
+inline void show_table(list_header* _lh) { show_table_with_title(_lh, "Список студентов"); }
 
+/// @brief Функция для экспорта списка в файл (тип файла определяется автоматически по расширению)
+/// @param _lh Указатель на голову списка для экспорта
 inline void export_list_to_file(list_header* _lh) {
     if (!_lh || !(_lh->first)) return;
     char file_name[47] = "\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0";
