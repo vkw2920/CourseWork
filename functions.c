@@ -25,11 +25,7 @@
 // Отступы слева и сверху для таблички
 #define lp 6
 #define tp 3
-
-// Отступы для окна редактирования
-#define elp 40
-
-#define getch_thread_timeout 10
+#define background_symbol '0' + (rand() % 10)
 
 COORD screen_pos = { 0, 0 };      // Нулевые координаты
 COORD screen_end_pos = { 0, 0 };  // Координаты конца экрана (определяется при запуске или перерисовке)
@@ -239,20 +235,20 @@ inline void create_layout() {
 
     // Сделать фон
     SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), screen_pos);
-    for (uint _i = 0; _i < screen_end_pos.X * tp; _i++) printf("\x1b[3%cm%c", '1' + (rand() % 7), '0' + (rand() % 2));
+    for (uint _i = 0; _i < screen_end_pos.X * tp; _i++) printf("\x1b[3%cm%c", '1' + (rand() % 7), background_symbol);
     screen_pos.Y += tp;
     for (uint _i = 0; _i < window_h; _i++) {
         screen_pos.X = 0;
         SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), screen_pos);
-        for (uint _j = 0; _j < lp; _j++) printf("\x1b[3%cm%c", '1' + (rand() % 7), '0' + (rand() % 2));
+        for (uint _j = 0; _j < lp; _j++) printf("\x1b[3%cm%c", '1' + (rand() % 7), background_symbol);
         screen_pos.X = lp + window_w;
         SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), screen_pos);
-        for (uint _j = 0; _j < lp; _j++) printf("\x1b[3%cm%c", '1' + (rand() % 7), '0' + (rand() % 2));
+        for (uint _j = 0; _j < lp; _j++) printf("\x1b[3%cm%c", '1' + (rand() % 7), background_symbol);
         screen_pos.Y++;
     }
     screen_pos.X = screen_pos.Y = 0;
 
-    for (uint _i = 0; _i < screen_end_pos.X * tp; _i++) printf("\x1b[3%cm%c", '1' + (rand() % 7), '0' + (rand() % 2));
+    for (uint _i = 0; _i < screen_end_pos.X * tp; _i++) printf("\x1b[3%cm%c", '1' + (rand() % 7), background_symbol);
     printf("\x1b[0m");
     SetConsoleOutputCP(old_cp);
     show_base_hint("\x1b[33mПРЕДУПРЕЖДЕНИЕ\x1b[0m: Использование кириллических символов может привести к ошибкам в работе программы.");
@@ -299,15 +295,6 @@ size_t intlen(int _i) {
     size_t res = strlen(r);
     free(r);
     return res;
-}
-
-/// @brief Функция для тестирования функции intlen(int)
-void intlen_test() {
-    printf("Testing: intlen(2004) = %d\n", intlen(2004));
-    printf("Testing: intlen(204) = %d\n", intlen(204));
-    printf("Testing: intlen(24) = %d\n", intlen(24));
-    printf("Testing: intlen(98) = %d\n", intlen(98));
-    printf("Testing: intlen(20394) = %d\n", intlen(20394));
 }
 
 /// @brief Функция для ввода или изменения данных
@@ -580,7 +567,8 @@ student* enter_data(student* _d) {
             SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), item_pos[2]);
             if (s == 2) printf("\x1b[47;30m");
             SetConsoleOutputCP(old_cp);
-            printf("%15.15s\x1b[0m\x20%d", "Год рождения", _data->birth_year);
+            if (_data->birth_year) printf("%15.15s\x1b[0m\x20%d", "Год рождения", _data->birth_year);
+            else printf("%15.15s\x1b[0m\x20_", "Год рождения");
             SetConsoleOutputCP(866);
             for (uint _i = 0; _i < local_w - 25 - intlen(_data->birth_year); _i++) printf("_");
         }
@@ -615,7 +603,8 @@ student* enter_data(student* _d) {
             SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), item_pos[2]);
             if (s == 2) printf("\x1b[47;30m");
             SetConsoleOutputCP(old_cp);
-            printf("%15.15s\x1b[0m\x20%d", "Год рождения", _data->birth_year);
+            if (_data->birth_year) printf("%15.15s\x1b[0m\x20%d", "Год рождения", _data->birth_year);
+            else printf("%15.15s\x1b[0m\x20_", "Год рождения");
             SetConsoleOutputCP(866);
             for (uint _i = 0; _i < local_w - 25 - intlen(_data->birth_year); _i++) printf("_");
             SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), item_pos[3]);
@@ -642,7 +631,8 @@ student* enter_data(student* _d) {
             SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), item_pos[2]);
             if (s == 2) printf("\x1b[47;30m");
             SetConsoleOutputCP(old_cp);
-            printf("%15.15s\x1b[0m\x20%d", "Год рождения", _data->birth_year);
+            if (_data->birth_year) printf("%15.15s\x1b[0m\x20%d", "Год рождения", _data->birth_year);
+            else printf("%15.15s\x1b[0m\x20_", "Год рождения");
             SetConsoleOutputCP(866);
             for (uint _i = 0; _i < local_w - 25 - intlen(_data->birth_year); _i++) printf("_");
             SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), item_pos[3]);
@@ -655,7 +645,8 @@ student* enter_data(student* _d) {
             SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), item_pos[4]);
             if (s == 4) printf("\x1b[47;30m");
             SetConsoleOutputCP(old_cp);
-            printf("%15.15s\x1b[0m\x20%d", "Пропущено часов", _data->skipped_hours);
+            if (_data->skipped_hours) printf("%15.15s\x1b[0m\x20%d", "Пропущено часов", _data->skipped_hours);
+            else printf("%15.15s\x1b[0m\x20_", "Пропущено часов");
             SetConsoleOutputCP(866);
             for (uint _i = 0; _i < local_w - 25 - intlen(_data->skipped_hours); _i++) printf("_");
         }
@@ -691,13 +682,15 @@ student* enter_data(student* _d) {
             SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), item_pos[4]);
             if (s == 4) printf("\x1b[47;30m");
             SetConsoleOutputCP(old_cp);
-            printf("%15.15s\x1b[0m\x20%d", "Пропущено часов", _data->skipped_hours);
+            if (_data->skipped_hours) printf("%15.15s\x1b[0m\x20%d", "Пропущено часов", _data->skipped_hours);
+            else printf("%15.15s\x1b[0m\x20_", "Пропущено часов");
             SetConsoleOutputCP(866);
             for (uint _i = 0; _i < local_w - 25 - intlen(_data->skipped_hours); _i++) printf("_");
             SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), item_pos[5]);
             if (s == 5) printf("\x1b[47;30m");
             SetConsoleOutputCP(old_cp);
-            printf("%15.15s\x1b[0m\x20%d", "Оправдано часов", _data->acquired_hours);
+            if (_data->acquired_hours) printf("%15.15s\x1b[0m\x20%d", "Оправдано часов", _data->acquired_hours);
+            else printf("%15.15s\x1b[0m\x20_", "Оправдано часов");
             SetConsoleOutputCP(866);
             for (uint _i = 0; _i < local_w - 25 - intlen(_data->acquired_hours); _i++) printf("_");
         }
@@ -726,13 +719,15 @@ student* enter_data(student* _d) {
             SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), item_pos[4]);
             if (s == 4) printf("\x1b[47;30m");
             SetConsoleOutputCP(old_cp);
-            printf("%15.15s\x1b[0m\x20%d", "Пропущено часов", _data->skipped_hours);
+            if (_data->skipped_hours) printf("%15.15s\x1b[0m\x20%d", "Пропущено часов", _data->skipped_hours);
+            else printf("%15.15s\x1b[0m\x20_", "Пропущено часов");
             SetConsoleOutputCP(866);
             for (uint _i = 0; _i < local_w - 25 - intlen(_data->skipped_hours); _i++) printf("_");
             SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), item_pos[5]);
             if (s == 5) printf("\x1b[47;30m");
             SetConsoleOutputCP(old_cp);
-            printf("%15.15s\x1b[0m\x20%d", "Оправдано часов", _data->acquired_hours);
+            if (_data->acquired_hours) printf("%15.15s\x1b[0m\x20%d", "Оправдано часов", _data->acquired_hours);
+            else printf("%15.15s\x1b[0m\x20_", "Оправдано часов");
             SetConsoleOutputCP(866);
             for (uint _i = 0; _i < local_w - 25 - intlen(_data->acquired_hours); _i++) printf("_");
             SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), item_pos[6]);
@@ -767,7 +762,8 @@ student* enter_data(student* _d) {
             SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), item_pos[5]);
             if (s == 5) printf("\x1b[47;30m");
             SetConsoleOutputCP(old_cp);
-            printf("%15.15s\x1b[0m\x20%d", "Оправдано часов", _data->acquired_hours);
+            if (_data->acquired_hours) printf("%15.15s\x1b[0m\x20%d", "Оправдано часов", _data->acquired_hours);
+            else printf("%15.15s\x1b[0m\x20_", "Оправдано часов");
             SetConsoleOutputCP(866);
             for (uint _i = 0; _i < local_w - 25 - intlen(_data->acquired_hours); _i++) printf("_");
             SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), item_pos[6]);
@@ -801,7 +797,8 @@ student* enter_data(student* _d) {
             SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), item_pos[5]);
             if (s == 5) printf("\x1b[47;30m");
             SetConsoleOutputCP(old_cp);
-            printf("%15.15s\x1b[0m\x20%d", "Оправдано часов", _data->acquired_hours);
+            if (_data->acquired_hours) printf("%15.15s\x1b[0m\x20%d", "Оправдано часов", _data->acquired_hours);
+            else printf("%15.15s\x1b[0m\x20_", "Оправдано часов");
             SetConsoleOutputCP(866);
             for (uint _i = 0; _i < local_w - 25 - intlen(_data->acquired_hours); _i++) printf("_");
             SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), item_pos[6]);
@@ -853,8 +850,9 @@ void show_table_with_title(list_header* _lh, char* _title) {
     uint table_hight = main_size.Y - 2;  // Место для заголовка и нумерации страниц
     uint page_size = table_hight - 4;
     int current_page = 0;
-    uint page_count = _lh->length / page_size;
-    if (page_count*page_size < _lh->length) page_count++;
+    uint page_count = (_lh->length + 1) / page_size;
+    if (page_count*page_size < _lh->length + 1) page_count++;
+    if (page_count <= 0) page_count = 1;
 
     uint group_width = 6;
     uint birthyear_width = 12;
@@ -875,6 +873,8 @@ void show_table_with_title(list_header* _lh, char* _title) {
     for (uint _i = 0; _i < table_width - strlen(_title) - title_left_padding; _i++) printf(" ");
 
     draw_table:
+
+    if (selected < 0) selected = 0;
 
     menu(0, _lh);
     show_second_hint(table_hints);
@@ -937,16 +937,28 @@ void show_table_with_title(list_header* _lh, char* _title) {
     printf("\xc4\xb4");
 
     uint showed_items = 0;
-    list_item* tmp = get_student_by_id(_lh, current_page*page_size);
-    for (uint _i = 0; _i < page_size && tmp; _i++, tmp = tmp->next, showed_items++) {
+    list_item* tmp;
+    if (_lh->first) {
+        tmp = get_student_by_id(_lh, current_page*page_size);
+        for (uint _i = 0; _i < page_size && tmp; _i++, tmp = tmp->next, showed_items++) {
+            local_pos.Y++;
+            SCP(local_pos);
+            printf(((_i+current_page*page_size) == selected)?"\xb3\x1b[47;30m ":"\xb3 ");
+            chcp(1251); printf("%6.6s   ", tmp->inf->group);
+            printf("%s", tmp->inf->surname);
+            for (uint _j = 0; _j < surname_width - strlen(tmp->inf->surname); _j++) printf(" ");
+            printf("       %4.4d        %c    %11d   %-11d", tmp->inf->birth_year, (tmp->inf->man)?'М':'Ж', tmp->inf->skipped_hours, tmp->inf->acquired_hours);
+            chcp(866); printf(" \x1b[0m\xb3");
+        }
+    } else {
         local_pos.Y++;
         SCP(local_pos);
-        printf(((_i+current_page*page_size) == selected)?"\xb3\x1b[47;30m ":"\xb3 ");
-        chcp(1251); printf("%6.6s   ", tmp->inf->group);
-        printf("%s", tmp->inf->surname);
-        for (uint _j = 0; _j < surname_width - strlen(tmp->inf->surname); _j++) printf(" ");
-        printf("       %4.4d        %c    %11d   %-11d", tmp->inf->birth_year, (tmp->inf->man)?'М':'Ж', tmp->inf->skipped_hours, tmp->inf->acquired_hours);
-        chcp(866); printf(" \x1b[0m\xb3");
+        chcp(866); printf("\xb3 ");
+        for (uint _i = 0; _i < (table_width - 6 - strlen("Нет данных")) / 2; _i++) printf("\xc4");
+        chcp(1251); printf(" Нет данных ");
+        chcp(866); for (uint _i = 0; _i < (table_width - 6 - strlen("Нет данных")) - (table_width - 6 - strlen("Нет данных")) / 2; _i++) printf("\xc4");
+        printf(" \xb3");
+        showed_items++;
     }
 
     local_pos.Y++;
@@ -962,13 +974,13 @@ void show_table_with_title(list_header* _lh, char* _title) {
     if (current_page <= 0) {  // Первая страница (без левой стрелочки)
         if (page_count == 1) {  // Нет даже второй страницы
             sprintf(page_string, "    Page: %d / %d    ", current_page + 1, page_count);
-        } else {
+        } else {  // Есть вторая страница
             sprintf(page_string, "    Page: %d / %d  ->", current_page + 1, page_count);
         }
-    } else {
-        if (current_page + 1 == page_count) {
+    } else {  // Есть предыдущая страница
+        if (current_page + 1 == page_count) {  // Нет следующей страницы
             sprintf(page_string, "<-  Page: %d / %d    ", current_page + 1, page_count);
-        } else {
+        } else {  // Есть и следующая страница
             sprintf(page_string, "<-  Page: %d / %d  ->", current_page + 1, page_count);
         }
     }
@@ -985,19 +997,24 @@ void show_table_with_title(list_header* _lh, char* _title) {
 
     // Ну а теперь обработаем действия клавишами
     while (1) {
+        if (selected < 0) selected = 0;
         uchar a = _getch();
         COORD _local_pos = menu_pos;
         _local_pos.Y += menu_size.Y - 1;
         SCP(_local_pos);
         printf("Entered %d    ", a);
+        _local_pos.Y -= 1;
+        SCP(_local_pos);
+        printf("_lh->length is %d    ", _lh->length);
         if (a == 'e' || a == 243 || a == 13) {  // Edit
             student* editable = get_student_by_id(_lh, selected)->inf;
             *(editable) = *(enter_data(editable));
             goto draw_table;
-        } else if (a == 'n' || a == 226) {  // Add new
+        } else if (a == 'n' || a == 226 || a == 242 || a == 210) {  // Add new
             student* _st = enter_data(NULL);
             if (_st) add_student(_lh, *_st);
-            goto draw_table;
+            if (_lh->length < 0) _lh->length = 0;
+            goto table_start;
         } else if (a == 224) {  // Arrow key
             uchar b = _getch();
             if (b == 83) {  // Delete
@@ -1009,6 +1026,12 @@ void show_table_with_title(list_header* _lh, char* _title) {
                 page_count = _lh->length / page_size;
                 if (page_count*page_size < _lh->length+1) page_count++;
                 if (current_page >= page_count) current_page = page_count - 1;
+                if (_lh->length < 0) {
+                    _lh->length = -1;
+                    current_page = 0;
+                    selected = 0;
+                    goto table_start;
+                }
                 goto draw_table;
             } else if (b == 71 && current_page > 0) {  // Home
                 selected -= current_page * page_size;

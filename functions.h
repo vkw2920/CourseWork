@@ -27,14 +27,14 @@ typedef struct student {
 
 /// @brief Ёлемент списка (информационное поле и указатель на следующий элемент)
 typedef struct list_item {
-    student* inf;
-    struct list_item* next;
+    student* inf;            // ”казатель на информационное поле
+    struct list_item* next;  // ”казатель на следующий элемент
 } list_item;
 
 /// @brief √олова списка (размер списка и указатель на начальный элемент)
 typedef struct list_header {
-    list_item* first;
-    uint length;
+    list_item* first;  // ”казатель на начальный элемент списка
+    int length;        // ƒлина списка
 } list_header;
 
 char* strlower(char*);
@@ -48,7 +48,6 @@ void show_base_hint(char*);
 void show_second_hint(char*);
 void clear_main();
 size_t intlen(int);
-void intlen_test();
 student* enter_data(student*);
 void clear_menu();
 void clear_hint();

@@ -30,17 +30,9 @@
     +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 */
 
-#ifndef _CRT_SECURE_NO_WARNINGS
-#define _CRT_SECURE_NO_WARNINGS
-#endif
-
 #include <stdio.h>
 #include <windows.h>
 #include <conio.h>
-
-#ifndef uint
-#define uint unsigned int
-#endif
 
 #ifndef student
 #include "functions.h"
@@ -98,9 +90,10 @@ char* surnames[30] = {
 
 void list_apped(list_header* _lh) {
     if (DEBUD_MODE) printf("Main.exe: list_append called\n");
-    for (uint _i = 0; _i < 50; _i++) {
+    for (uint _i = 0; _i < 500; _i++) {
         if (DEBUD_MODE) printf("Main.exe: iteration %d in list_append\n", _i+1);
         uint skips = rand() % 999;
+        if (skips <= 0) skips = 999;
         add_student(_lh, new_student(groups[rand()%10], surnames[rand()%30], 2000+(rand()%20), rand()%2, skips, rand()%skips));
     }
 }
@@ -113,6 +106,5 @@ int main() {
         list_apped(lh);
         show_table(lh);
     }
-    // intlen_test();
     return 0;
 }
