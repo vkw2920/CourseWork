@@ -255,6 +255,7 @@ inline void create_layout() {
 }
 
 /// @brief Функция для печати подсказки в заданной области
+/// @param _hint Си-строка, которую нужно вывести (обязательно завершение символом \0)
 inline void show_base_hint(char* _hint) {
     SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), hint_pos);
     int old_cp = GetConsoleOutputCP();
@@ -278,7 +279,7 @@ inline void show_second_hint(char* _hint) {
 }
 
 /// @brief Функция для очистки главной области (области с данными)
-inline void clear_main() {
+void clear_main() {
     COORD local_pos = main_pos;
     for (uint _i = 0; _i < main_size.Y; _i++, local_pos.Y++) {
         SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), local_pos);
@@ -1712,24 +1713,6 @@ inline void sort_list(list_header* _lh, char _field, char _direction) {
                 }
                 break;
         }
-    }
-}
-
-/// @brief Функция для очистки области с меню
-inline void clear_menu() {
-    COORD local_pos = menu_pos;
-    for (uint _i = 0; _i < menu_size.Y; _i++, local_pos.Y++) {
-        SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), local_pos);
-        for (uint _j = 0; _j < menu_size.X; _j++) printf("\x20");
-    }
-}
-
-/// @brief Функция для очистки области с подсказками
-inline void clear_hint() {
-    COORD local_pos = hint_pos;
-    for (uint _i = 0; _i < 2; _i++, local_pos.Y++) {
-        SCP(local_pos);
-        for (uint _j = 0; _j < hint_size.X; _j++) printf("\x20");
     }
 }
 
