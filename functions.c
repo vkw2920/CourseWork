@@ -23,19 +23,19 @@
 #include "functions.h"
 
 // Отступы слева и сверху для таблички
-#define lp 6
-#define tp 3
+#define lp 10
+#define tp 4
 #define background_symbol '0' + (rand() % 10)
 
-COORD screen_pos = { 0, 0 };      // Нулевые координаты
-COORD screen_end_pos = { 0, 0 };  // Координаты конца экрана (определяется при запуске или перерисовке)
-COORD border_pos = { lp, tp };    // Координаты начала рамки
-COORD menu_pos = { 4, 3 };        // Координаты блока меню
-COORD menu_size = { 0, 0 };       // Размеры блока меню (определяется при запуске или перерисовке)
-COORD main_pos = { 31 + lp, 1 + tp };       // Координаты главного блока (блока с данными) (определяется при запуске или перерисовке)
-COORD main_size = { 0, 0 };       // Размеры главного блока (определяется при запуске или перерисовке)
-COORD hint_pos = { 4, 0 };        // Координаты блока подсказок (определяется при запуске или перерисовке)
-COORD hint_size = { 0, 0 };       // Размеры блока подсказок (определяется при запуске или перерисовке)
+COORD screen_pos = { 0, 0 };           // Нулевые координаты
+COORD screen_end_pos = { 0, 0 };       // Координаты конца экрана (определяется при запуске или перерисовке)
+COORD border_pos = { lp, tp };         // Координаты начала рамки
+COORD menu_pos = { 4, 3 };             // Координаты блока меню
+COORD menu_size = { 0, 0 };            // Размеры блока меню (определяется при запуске или перерисовке)
+COORD main_pos = { 31 + lp, 1 + tp };  // Координаты главного блока (блока с данными) (определяется при запуске или перерисовке)
+COORD main_size = { 0, 0 };            // Размеры главного блока (определяется при запуске или перерисовке)
+COORD hint_pos = { 4, 0 };             // Координаты блока подсказок (определяется при запуске или перерисовке)
+COORD hint_size = { 0, 0 };            // Размеры блока подсказок (определяется при запуске или перерисовке)
 
 int menu_selected = 0;
 char _sort_direction = 1;
@@ -100,30 +100,32 @@ student new_student(char _group[7], char _surname[16], short _birth_year, char _
 /// @param _st Структура (созданная через new_student())
 /// @return Указаель на голову списка (не отличается от передаваемого)
 list_header* add_student(list_header* _lh, student _st) {
-    if (_lh->first) {
-        list_item* tmp = _lh->first;
-        while (tmp->next) tmp = tmp->next;
-        tmp->next = (list_item*)calloc(1, sizeof(list_item));
-        if (!(tmp->next)) return _lh;
-        tmp->next->inf = (student*)calloc(1, sizeof(student));
-        *(tmp->next->inf) = _st;
-        tmp->next->next = NULL;
-        _lh->length++;
-    }
-    else {
-        _lh->first = (list_item*)calloc(1, sizeof(list_item));
-        if (!(_lh->first)) return _lh;
-        _lh->first->inf = (student*)calloc(1, sizeof(student));
-        *(_lh->first->inf) = _st;
-        _lh->first->next = NULL;
+    if (_lh) {
+        if (_lh->first) {
+            list_item* tmp = _lh->first;
+            while (tmp->next) tmp = tmp->next;
+            tmp->next = (list_item*)calloc(1, sizeof(list_item));
+            if (!(tmp->next)) return _lh;
+            tmp->next->inf = (student*)calloc(1, sizeof(student));
+            *(tmp->next->inf) = _st;
+            tmp->next->next = NULL;
+            _lh->length++;
+        }
+        else {
+            _lh->first = (list_item*)calloc(1, sizeof(list_item));
+            if (!(_lh->first)) return _lh;
+            _lh->first->inf = (student*)calloc(1, sizeof(student));
+            *(_lh->first->inf) = _st;
+            _lh->first->next = NULL;
+        }
     }
     return _lh;
 }
 
-/// @brief Получение информационного поля по его порядковому номеру (аналлогия с массивами)
+/// @brief Получение элемента списка по его порядковому номеру (аналлогия с массивами)
 /// @param _lh Указатель на голову списка
 /// @param _id ID требуемого элемента
-/// @return Информационное поле в случае успеха, нулевую структуру в случае ошибки
+/// @return Указатель на требуемый элемент в случае успеха, NULL в случае ошибки
 list_item* get_student_by_id(list_header* _lh, uint _id) {
     if (_id < 0 || !_lh || !(_lh->first))
         return NULL;
@@ -141,18 +143,18 @@ list_item* get_student_by_id(list_header* _lh, uint _id) {
 /// @param _lh Указатель на голову списка
 /// @param _id ID удаляемого элемента
 inline void remove_student_by_id(list_header* _lh, uint _id) {
-    if (!_lh) return;
+    if (!_lh || !(_lh->first)) return;
     list_item* tmp = _lh->first;
-    if (!tmp) return;
     if (_id == 0) {
-        list_item* tmp2 = _lh->first;
-        _lh->first = tmp2->next;
-        free(tmp2);
+        _lh->first = tmp->next;
+        free(tmp->inf);
+        free(tmp);
     }
     else {
         for (uint _i = _id-1; _i > 0; _i--, tmp = tmp->next);
         list_item* tmp2 = tmp->next;
         tmp->next = tmp2->next;
+        free(tmp2->inf);
         free(tmp2);
     }
     _lh->length--;
@@ -321,7 +323,6 @@ student* enter_data(student* _d) {
         {local_pos.X + 2, local_pos.Y + ((local_h > 17) ? 12 : 6)},
         {local_pos.X, local_pos.Y + ((local_h > 17) ? 14 : 7)}
     };
-    // int old_cp = GetConsoleOutputCP();
     int old_cp = 1251;
     SetConsoleCP(old_cp);
     SetConsoleOutputCP(866);
@@ -880,6 +881,8 @@ void show_table_with_title(list_header* _lh, char* _title) {
     menu(0, _lh);
     show_second_hint(table_hints);
 
+
+    #pragma region ОТрисовка шапки таблицы
     local_pos = main_pos;
     local_pos.X++;
     local_pos.Y++;
@@ -936,6 +939,7 @@ void show_table_with_title(list_header* _lh, char* _title) {
     printf("\xc4\xc1\xc4");
     for (uint _i = 0; _i < acuired_hours_width; _i++) printf("\xc4");
     printf("\xc4\xb4");
+    #pragma endregion
 
     uint showed_items = 0;
     list_item* tmp;
@@ -1003,10 +1007,7 @@ void show_table_with_title(list_header* _lh, char* _title) {
         COORD _local_pos = menu_pos;
         _local_pos.Y += menu_size.Y - 1;
         SCP(_local_pos);
-        printf("Entered %d    ", a);
-        _local_pos.Y -= 1;
-        SCP(_local_pos);
-        printf("_lh->length is %d    ", _lh->length);
+        chcp(1251);printf("Число студентов: %d    ", _lh->length + 1);chcp(866);
         if (a == 'e' || a == 243 || a == 13) {  // Edit
             student* editable = get_student_by_id(_lh, selected)->inf;
             *(editable) = *(enter_data(editable));
@@ -1023,7 +1024,7 @@ void show_table_with_title(list_header* _lh, char* _title) {
                 if (selected % page_size == 0) {current_page--; selected--;}
                 if (current_page < 0) current_page = 0;
                 if (selected < 0) selected = 0;
-                if (selected > _lh->length) selected--;
+                if (selected > _lh->length) selected = _lh->length;
                 page_count = _lh->length / page_size;
                 if (page_count*page_size < _lh->length+1) page_count++;
                 if (current_page >= page_count) current_page = page_count - 1;
@@ -1105,7 +1106,7 @@ void show_table_with_title(list_header* _lh, char* _title) {
                 current_page++;
                 goto draw_table;
             }
-        } else if (a == 3 || a == 27) {  // Ctrl + C
+        } else if (a == 3 || a == 27) {  // Ctrl + C | ESC
             del_list(_lh);
             system("cls");
             return;
@@ -1118,7 +1119,7 @@ void show_table_with_title(list_header* _lh, char* _title) {
             goto draw_table;
         } else if (a == 15) {  // Ctrl + O
             read_list_from_file(_lh);
-            goto draw_table;
+            goto table_start;
         } else if (a == 18) {  // Ctrl + R
             create_layout();
             goto table_start;
@@ -1138,7 +1139,7 @@ inline void show_table(list_header* _lh) { show_table_with_title(_lh, "Список ст
 /// @param _lh Указатель на голову списка для экспорта
 inline void export_list_to_file(list_header* _lh) {
     if (!_lh || !(_lh->first)) return;
-    char file_name[47] = "\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0";
+    char file_name[47] = "\0";
     COORD local_pos = main_pos;
     local_pos.Y += (main_size.Y - 4) / 2;
     local_pos.X += (main_size.X - 50) / 2;
